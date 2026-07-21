@@ -1,30 +1,23 @@
--- Подключаем премиальную библиотеку интерфейса Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "🔥 Nexus Hub | Murder Mystery 2",
-   LoadingTitle = "Nexus Hub v1.0",
-   LoadingSubtitle = "Premium MM2 Experience",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem = false -- Без ключей
-})
-
--- Сервисы
+-- 🔥 NEXUS HUB: DARK OVERDRIVE EDITION 🔥
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 
--- Переменные состояний
-local espEnabled = false
-local autoGrabGun = false
-local silentAimMode = false
+-- ====== ПЕРЕМЕННЫЕ СОСТОЯНИЙ ======
+local States = {
+    ESP = false,
+    AutoGun = false,
+    NoClip = false,
+    SpeedMode = false,
+    FloatButton = false,
+    FloatButtonLocked = false
+}
 
--- ====== ЛОГИКА РОЛЕЙ ======
+-- ====== ЛОГИКА ИГРЫ (ММ2) ======
 local function GetRole(player)
     if not player or not player.Character then return "Innocent" end
-    
-    -- Проверка инвентаря и персонажа
     local function checkItems(container)
         if not container then return false end
         for _, item in ipairs(container:GetChildren()) do
@@ -39,214 +32,349 @@ local function GetRole(player)
         end
         return nil
     end
-
-    local role = checkItems(player.Character) or checkItems(player:FindFirstChild("Backpack"))
-    return role or "Innocent"
+    return checkItems(player.Character) or checkItems(player:FindFirstChild("Backpack")) or "Innocent"
 end
 
 local function GetMurderer()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if GetRole(player) == "Murderer" then return player end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if GetRole(p) == "Murderer" then return p end
     end
     return nil
 end
 
--- ====== ВКЛАДКИ МЕНЮ ======
-local MainTab = Window:CreateTab("🏠 Main", 4483362458)
-local CombatTab = Window:CreateTab("⚔️ Combat", 4483362458)
-local VisualsTab = Window:CreateTab("👁️ Visuals", 4483362458)
+-- ====== СИСТЕМА УВЕДОМЛЕНИЙ ======
+local function Notify(text)
+    -- Простая защита от спама в консоль, можно расширить до UI-уведомлений
+    print("[NEXUS HUB]: " .. text)
+end
 
--- ИНФОРМАЦИОННАЯ ПАНЕЛЬ
-local RoleLabel = MainTab:CreateLabel("Current Murderer: None")
-local SheriffLabel = MainTab:CreateLabel("Current Sheriff: None")
+-- ====== СТРОИМ CUSTOM DARK OVERDRIVE UI ======
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ODH_Dark_UI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
 
-task.spawn(function()
-    while task.wait(1) do
-        local murdName = "None"
-        local sherName = "None"
-        for _, p in ipairs(Players:GetPlayers()) do
-            local role = GetRole(p)
-            if role == "Murderer" then murdName = p.Name
-            elseif role == "Sheriff" then sherName = p.Name end
+-- Очистка старой версии, если скрипт перезапускается
+for _, gui in ipairs(CoreGui:GetChildren()) do
+    if gui.Name == "ODH_Dark_UI" and gui ~= ScreenGui then gui:Destroy() end
+end
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 550, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22) -- Тёмный фон
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Позволяет таскать окно
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = MainFrame
+
+-- Боковая панель (Sidebar)
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 160, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(13, 13, 16)
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = MainFrame
+
+local SidebarCorner = Instance.new("UICorner")
+SidebarCorner.CornerRadius = UDim.new(0, 8)
+SidebarCorner.Parent = Sidebar
+
+local SidebarCover = Instance.new("Frame") -- Убираем скругление справа у сайдбара
+SidebarCover.Size = UDim2.new(0, 10, 1, 0)
+SidebarCover.Position = UDim2.new(1, -10, 0, 0)
+SidebarCover.BackgroundColor3 = Color3.fromRGB(13, 13, 16)
+SidebarCover.BorderSizePixel = 0
+SidebarCover.Parent = Sidebar
+
+local Logo = Instance.new("TextLabel")
+Logo.Size = UDim2.new(1, 0, 0, 50)
+Logo.BackgroundTransparency = 1
+Logo.Text = "NEXUS HUB"
+Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
+Logo.Font = Enum.Font.GothamBlack
+Logo.TextSize = 20
+Logo.Parent = Sidebar
+
+local Divider = Instance.new("Frame")
+Divider.Size = UDim2.new(0.8, 0, 0, 1)
+Divider.Position = UDim2.new(0.1, 0, 0, 50)
+Divider.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+Divider.BorderSizePixel = 0
+Divider.Parent = Sidebar
+
+-- Контейнер для контента
+local Content = Instance.new("ScrollingFrame")
+Content.Size = UDim2.new(1, -170, 1, -20)
+Content.Position = UDim2.new(0, 165, 0, 10)
+Content.BackgroundTransparency = 1
+Content.ScrollBarThickness = 4
+Content.ScrollBarImageColor3 = Color3.fromRGB(50, 50, 60)
+Content.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.Parent = Content
+
+-- ====== ФУНКЦИЯ СОЗДАНИЯ TOGGLE (КАК В OVERDRIVE) ======
+local function CreateToggle(text, stateKey, callback)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Size = UDim2.new(1, -10, 0, 40)
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+    ToggleFrame.Parent = Content
+    
+    local TCorner = Instance.new("UICorner")
+    TCorner.CornerRadius = UDim.new(0, 6)
+    TCorner.Parent = ToggleFrame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -60, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Label.Font = Enum.Font.GothamSemibold
+    Label.TextSize = 14
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = ToggleFrame
+    
+    local SwitchBtn = Instance.new("TextButton")
+    SwitchBtn.Size = UDim2.new(0, 40, 0, 20)
+    SwitchBtn.Position = UDim2.new(1, -50, 0.5, -10)
+    SwitchBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    SwitchBtn.Text = ""
+    SwitchBtn.Parent = ToggleFrame
+    
+    local SCorner = Instance.new("UICorner")
+    SCorner.CornerRadius = UDim.new(1, 0)
+    SCorner.Parent = SwitchBtn
+    
+    local Indicator = Instance.new("Frame")
+    Indicator.Size = UDim2.new(0, 16, 0, 16)
+    Indicator.Position = UDim2.new(0, 2, 0.5, -8)
+    Indicator.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+    Indicator.Parent = SwitchBtn
+    
+    local ICorner = Instance.new("UICorner")
+    ICorner.CornerRadius = UDim.new(1, 0)
+    ICorner.Parent = Indicator
+    
+    local function UpdateVisuals()
+        if States[stateKey] then
+            SwitchBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 255) -- Фиолетовый активный цвет
+            Indicator.Position = UDim2.new(1, -18, 0.5, -8)
+        else
+            SwitchBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            Indicator.Position = UDim2.new(0, 2, 0.5, -8)
         end
-        RoleLabel:Set("Current Murderer: " .. murdName)
-        SheriffLabel:Set("Current Sheriff: " .. sherName)
     end
-end)
+    
+    SwitchBtn.MouseButton1Click:Connect(function()
+        States[stateKey] = not States[stateKey]
+        UpdateVisuals()
+        if callback then callback(States[stateKey]) end
+    end)
+end
 
--- ====== ВХ (ESP) ======
-VisualsTab:CreateToggle({
-   Name = "Enable Player ESP",
-   CurrentValue = false,
-   Flag = "ESP_Toggle",
-   Callback = function(Value)
-       espEnabled = Value
-       if not Value then
-           -- Очистка ESP при выключении
-           for _, p in ipairs(Players:GetPlayers()) do
-               if p.Character and p.Character:FindFirstChild("NexusESP") then
-                   p.Character.NexusESP:Destroy()
-               end
-           end
-       end
-   end,
-})
+local function CreateButton(text, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, -10, 0, 40)
+    Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 14
+    Btn.Parent = Content
+    
+    local BCorner = Instance.new("UICorner")
+    BCorner.CornerRadius = UDim.new(0, 6)
+    BCorner.Parent = Btn
+    
+    Btn.MouseButton1Click:Connect(callback)
+end
 
-RunService.RenderStepped:Connect(function()
-    if not espEnabled then return end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            
-            local hl = p.Character:FindFirstChild("NexusESP")
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = "NexusESP"
-                hl.FillTransparency = 0.5
-                hl.OutlineTransparency = 0
-                hl.Parent = p.Character
-            end
-            
-            local role = GetRole(p)
-            if role == "Murderer" then
-                hl.FillColor = Color3.fromRGB(255, 0, 0)
-                hl.OutlineColor = Color3.fromRGB(255, 50, 50)
-            elseif role == "Sheriff" then
-                hl.FillColor = Color3.fromRGB(0, 100, 255)
-                hl.OutlineColor = Color3.fromRGB(50, 150, 255)
-            else
-                hl.FillColor = Color3.fromRGB(0, 255, 0)
-                hl.OutlineColor = Color3.fromRGB(50, 255, 50)
-            end
-        end
-    end
-end)
+local function CreateLabel(text)
+    local Lbl = Instance.new("TextLabel")
+    Lbl.Size = UDim2.new(1, -10, 0, 30)
+    Lbl.BackgroundTransparency = 1
+    Lbl.Text = text
+    Lbl.TextColor3 = Color3.fromRGB(150, 150, 160)
+    Lbl.Font = Enum.Font.GothamBold
+    Lbl.TextSize = 12
+    Lbl.TextXAlignment = Enum.TextXAlignment.Left
+    Lbl.Parent = Content
+end
 
--- ====== COMBAT (Скрытый выстрел и Кнопка) ======
-local shootButton
-CombatTab:CreateToggle({
-   Name = "Show Floating 'Shoot Murderer' Button",
-   CurrentValue = false,
-   Flag = "FloatingBtn",
-   Callback = function(Value)
-       if shootButton then shootButton.Visible = Value end
-   end,
-})
+-- ====== ПЛАВАЮЩАЯ КНОПКА SHOOT MURDERER ======
+local FloatBtn = Instance.new("TextButton")
+FloatBtn.Size = UDim2.new(0, 160, 0, 45)
+FloatBtn.Position = UDim2.new(0.5, -80, 0.7, 0)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+FloatBtn.BorderColor3 = Color3.fromRGB(150, 50, 255)
+FloatBtn.BorderSizePixel = 2
+FloatBtn.Text = "SHOOT MURDERER"
+FloatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FloatBtn.Font = Enum.Font.GothamBlack
+FloatBtn.TextSize = 14
+FloatBtn.Visible = false
+FloatBtn.Parent = ScreenGui
 
-CombatTab:CreateToggle({
-   Name = "Enable Silent Aim (No Camera Move)",
-   CurrentValue = true,
-   Flag = "SilentAim",
-   Callback = function(Value)
-       silentAimMode = Value
-   end,
-})
+local FCorner = Instance.new("UICorner")
+FCorner.CornerRadius = UDim.new(0, 6)
+FCorner.Parent = FloatBtn
 
--- Создание плавающей кнопки
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "Nexus_ShootMurdererGUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = CoreGui
-
-shootButton = Instance.new("TextButton")
-shootButton.Name = "ShootButton"
-shootButton.Size = UDim2.new(0, 180, 0, 45)
-shootButton.Position = UDim2.new(0.5, -90, 0.4, 0)
-shootButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-shootButton.BorderColor3 = Color3.fromRGB(255, 0, 0)
-shootButton.BorderSizePixel = 2
-shootButton.Text = "SHOOT MURDERER"
-shootButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-shootButton.TextSize = 16
-shootButton.Font = Enum.Font.GothamBold
-shootButton.Visible = false
-shootButton.Parent = screenGui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = shootButton
-
--- Перетаскивание кнопки
-local isDragging = false
-local dragStart, startPos
-shootButton.InputBegan:Connect(function(input)
+-- Логика перетаскивания плавающей кнопки
+local isDraggingBtn = false
+local dragStartBtn, startPosBtn
+FloatBtn.InputBegan:Connect(function(input)
+    if States.FloatButtonLocked then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isDragging = true
-        dragStart = input.Position
-        startPos = shootButton.Position
+        isDraggingBtn = true
+        dragStartBtn = input.Position
+        startPosBtn = FloatBtn.Position
         input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then isDragging = false end
+            if input.UserInputState == Enum.UserInputState.End then isDraggingBtn = false end
         end)
     end
 end)
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        shootButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+UserInputService.InputChanged:Connect(function(input)
+    if isDraggingBtn and not States.FloatButtonLocked then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - dragStartBtn
+            FloatBtn.Position = UDim2.new(startPosBtn.X.Scale, startPosBtn.X.Offset + delta.X, startPosBtn.Y.Scale, startPosBtn.Y.Offset + delta.Y)
+        end
     end
 end)
 
--- Логика выстрела
-shootButton.MouseButton1Click:Connect(function()
+-- ИСПРАВЛЕННАЯ ЛОГИКА ВЫСТРЕЛА (1-Frame Snap)
+local function ExecuteShoot()
     local murderer = GetMurderer()
     if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("HumanoidRootPart") then
-        Rayfield:Notify({Title = "Ошибка", Content = "Убийца не найден!", Duration = 2})
+        Notify("Murderer not found or dead.")
         return
     end
 
     local char = LocalPlayer.Character
-    local gun = char and char:FindFirstChild("Gun") or (LocalPlayer:FindFirstChild("Backpack") and LocalPlayer.Backpack:FindFirstChild("Gun"))
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    local gun = char and char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
     
     if not gun then
-        Rayfield:Notify({Title = "Ошибка", Content = "У тебя нет пистолета!", Duration = 2})
+        Notify("You don't have the Gun!")
         return
     end
 
-    if gun.Parent ~= char then
+    -- Экипируем пистолет с гарантией
+    if gun.Parent == backpack then
         char.Humanoid:EquipTool(gun)
-        task.wait(0.05)
+        task.wait(0.1) -- Обязательная задержка для сервера
     end
 
     local targetPos = murderer.Character.HumanoidRootPart.Position
+    local cam = workspace.CurrentCamera
+    
+    -- Silent Aim (1-Frame Snap): Моментально наводим, стреляем и возвращаем камеру
+    local oldCFrame = cam.CFrame
+    cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
+    
+    gun:Activate() -- Активируем выстрел точно в цель
+    
+    RunService.RenderStepped:Wait() -- Ждем 1 кадр отрисовки
+    cam.CFrame = oldCFrame -- Возвращаем камеру обратно (никто ничего не заметит)
+    
+    Notify("Shot fired at " .. murderer.Name)
+end
 
-    if silentAimMode then
-        -- Выстрел без движения камеры (Silent Aim)
-        for _, v in ipairs(gun:GetDescendants()) do
-            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                if v.Name:lower():find("shoot") or v.Name:lower():find("fire") or v.Name:lower():find("gun") then
-                    v:FireServer(targetPos)
+FloatBtn.MouseButton1Click:Connect(ExecuteShoot)
+
+-- ====== НАПОЛНЕНИЕ МЕНЮ ФУНКЦИЯМИ ======
+CreateLabel("🗡️ COMBAT")
+CreateToggle("Show Shoot Button", "FloatButton", function(val) FloatBtn.Visible = val end)
+CreateToggle("Lock Shoot Button", "FloatButtonLocked", nil)
+CreateButton("Force Shoot Murderer Now", ExecuteShoot)
+
+CreateLabel("👁️ VISUALS")
+CreateToggle("Player ESP (Wallhack)", "ESP", function(val)
+    if not val then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("NexusESP") then p.Character.NexusESP:Destroy() end
+        end
+    end
+end)
+
+CreateLabel("🏃 MOVEMENT & MISC")
+CreateToggle("WalkSpeed Boost (x2)", "SpeedMode", function(val)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = val and 32 or 16
+    end
+end)
+CreateToggle("NoClip (Walk through walls)", "NoClip", nil)
+CreateToggle("Auto-Teleport to Dropped Gun", "AutoGun", nil)
+
+-- ====== ФОНОВЫЕ ЦИКЛЫ ======
+RunService.RenderStepped:Connect(function()
+    -- ESP Logic
+    if States.ESP then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                local hl = p.Character:FindFirstChild("NexusESP")
+                if not hl then
+                    hl = Instance.new("Highlight")
+                    hl.Name = "NexusESP"
+                    hl.FillTransparency = 0.6
+                    hl.OutlineTransparency = 0
+                    hl.Parent = p.Character
+                end
+                
+                local role = GetRole(p)
+                if role == "Murderer" then
+                    hl.FillColor = Color3.fromRGB(255, 30, 30)
+                    hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+                elseif role == "Sheriff" then
+                    hl.FillColor = Color3.fromRGB(30, 100, 255)
+                    hl.OutlineColor = Color3.fromRGB(0, 50, 255)
+                else
+                    hl.FillColor = Color3.fromRGB(30, 255, 30)
+                    hl.OutlineColor = Color3.fromRGB(0, 255, 0)
                 end
             end
         end
-        gun:Activate()
-        Rayfield:Notify({Title = "Выстрел", Content = "Silent Aim применен к " .. murderer.Name, Duration = 2})
-    else
-        -- Обычный аимлок (поворот камеры)
-        workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetPos)
-        gun:Activate()
     end
 end)
 
--- ====== АВТО-ПОДБОР ОРУЖИЯ ======
-MainTab:CreateToggle({
-   Name = "Auto Teleport to Dropped Gun",
-   CurrentValue = false,
-   Flag = "AutoGun",
-   Callback = function(Value)
-       autoGrabGun = Value
-   end,
-})
-
-task.spawn(function()
-    while task.wait(0.5) do
-        if autoGrabGun and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local gunDrop = workspace:FindFirstChild("GunDrop")
-            if gunDrop then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = gunDrop.CFrame
-                Rayfield:Notify({Title = "Gun Grabbed", Content = "Телепортировано к брошенному пистолету!", Duration = 2})
-                task.wait(2) -- Пауза, чтобы не спамить телепортом
+RunService.Stepped:Connect(function()
+    -- NoClip Logic
+    if States.NoClip and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
         end
     end
 end)
 
-Rayfield:Notify({Title = "Nexus Hub Загружен", Content = "Меню активировано. Приятной игры!", Duration = 5})
+task.spawn(function()
+    -- Auto Gun Logic
+    while task.wait(0.5) do
+        if States.AutoGun and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local gunDrop = workspace:FindFirstChild("GunDrop")
+            if gunDrop then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = gunDrop.CFrame
+                Notify("Teleported to dropped gun!")
+                task.wait(2)
+            end
+        end
+    end
+end)
+
+-- Toggle Menu Keybind (Right Shift)
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.RightShift then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+end)
+
+Notify("Loaded successfully! Press Right Shift to toggle menu.")
