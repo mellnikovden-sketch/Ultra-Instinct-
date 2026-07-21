@@ -1,18 +1,24 @@
--- 🔥 NEXUS HUB: DARK OVERDRIVE V2.1 (FIXED & EXPANDED) 🔥
+-- 🔥 NEXUS HUB: DARK OVERDRIVE V3 (FULL OVERDRIVE FEATURE PACK + GUN ESP) 🔥
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local States = {
     ESP = false,
+    GunESP = false,
     AutoGun = false,
     AuraGrab = false,
     NoClip = false,
     InfJump = false,
+    Fly = false,
     FloatButton = true,
-    FloatButtonLocked = false
+    FloatButtonLocked = false,
+    WalkSpeed = 16,
+    JumpPower = 50,
+    FOV = 70
 }
 
 -- ====== УТИЛИТЫ И РОЛИ ММ2 ======
@@ -49,38 +55,33 @@ local function GetSheriff()
     return nil
 end
 
--- Надежное получение координат упавшего пистолета (Исправление багов MM2)
-local function GetGunDropCFrame()
+local function GetGunDropPart()
     local drop = workspace:FindFirstChild("GunDrop")
     if not drop then return nil end
-    
     if drop:IsA("BasePart") then
-        return drop.CFrame
+        return drop
     elseif drop:IsA("Model") then
         local handle = drop:FindFirstChild("Handle") or drop:FindFirstChildWhichIsA("BasePart")
-        if handle then return handle.CFrame end
-        
-        local success, pivot = pcall(function() return drop:GetPivot() end)
-        if success and pivot then return pivot end
+        if handle then return handle end
     end
     return nil
 end
 
 local function Notify(text)
-    print("[NEXUS HUB]: " + text)
+    print("[NEXUS HUB]: " .. text)
 end
 
 -- ====== ГЛАВНЫЙ ИНТЕРФЕЙС (DARK OVERDRIVE STYLE) ======
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ODH_Dark_V2_Fixed"
+ScreenGui.Name = "ODH_Dark_V3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = CoreGui
 
 for _, gui in ipairs(CoreGui:GetChildren()) do
-    if gui.Name == "ODH_Dark_V2_Fixed" and gui ~= ScreenGui then gui:Destroy() end
+    if gui.Name == "ODH_Dark_V3" and gui ~= ScreenGui then gui:Destroy() end
 end
 
--- Круглая неоновая полупрозрачная кнопка меню
+-- Круглая неоновая полупрозрачная кнопка включения/выключения меню
 local ToggleMenuBtn = Instance.new("TextButton")
 ToggleMenuBtn.Size = UDim2.new(0, 60, 0, 60)
 ToggleMenuBtn.Position = UDim2.new(0, 20, 0.4, 0)
@@ -106,8 +107,8 @@ UIStroke.Parent = ToggleMenuBtn
 
 -- Главное окно
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 580, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -290, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 600, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 MainFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 18)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -157,7 +158,7 @@ SCorner.Parent = Sidebar
 local Logo = Instance.new("TextLabel")
 Logo.Size = UDim2.new(1, 0, 0, 50)
 Logo.BackgroundTransparency = 1
-Logo.Text = "OVERDRIVE V2"
+Logo.Text = "OVERDRIVE V3"
 Logo.TextColor3 = Color3.fromRGB(0, 255, 200)
 Logo.Font = Enum.Font.GothamBlack
 Logo.TextSize = 14
@@ -325,7 +326,7 @@ local function ExecuteShoot()
 
     if gun.Parent == backpack then
         char.Humanoid:EquipTool(gun)
-        task.wait(0.12)
+        task.wait(0.15)
     end
 
     local targetPos = murderer.Character.HumanoidRootPart.Position
@@ -333,37 +334,56 @@ local function ExecuteShoot()
     local oldCFrame = cam.CFrame
     
     cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
-    gun:Activate()
+    task.wait(0.05)
+    
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.05)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+    end)
+    
     RunService.RenderStepped:Wait()
     cam.CFrame = oldCFrame
-    
-    Notify("Выстрел по: " + murderer.Name)
+    Notify("Выстрел произведен в: " .. murderer.Name)
 end
 
 ShootFloatBtn.MouseButton1Click:Connect(ExecuteShoot)
 
--- ФУНКЦИЯ ПОДБОРА ПИСТОЛЕТА (GRAB GUN)
+-- ФУНКЦИЯ ПОДБОРА ПИСТОЛЕТА
 local function GrabGunFunction()
-    local gunCF = GetGunDropCFrame()
-    if gunCF and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local oldPos = LocalPlayer.Character.HumanoidRootPart.CFrame
-        LocalPlayer.Character.HumanoidRootPart.CFrame = gunCF + Vector3.new(0, 2, 0)
-        task.wait(0.1)
-        LocalPlayer.Character.HumanoidRootPart.CFrame = oldPos
-        Notify("Пистолет успешно подобран!")
+    local gunPart = GetGunDropPart()
+    if gunPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local rootPart = LocalPlayer.Character.HumanoidRootPart
+        local oldPos = rootPart.CFrame
+        
+        pcall(function()
+            firetouchinterest(rootPart, gunPart, 0)
+            firetouchinterest(rootPart, gunPart, 1)
+        end)
+        
+        rootPart.CFrame = gunPart.CFrame + Vector3.new(0, 0.5, 0)
+        task.wait(0.05)
+        rootPart.CFrame = oldPos
+        Notify("Пистолет подобран!")
     else
         Notify("Пистолет на карте не найден!")
     end
 end
 
--- ====== НАПОЛНЕНИЕ МЕНЮ ФУНКЦИЯМИ ======
+-- ====== НАПОЛНЕНИЕ МЕНЮ (ПОЛНЫЙ НАБОР OVERDRIVE) ======
 CreateLabel("⚔️ COMBAT & WEAPON")
 CreateToggle("Show Shoot Button", "FloatButton", function(val) ShootFloatBtn.Visible = val end)
 CreateButton("⚡ Instant Shoot Murderer", ExecuteShoot)
 
-CreateLabel("🔫 GUN UTILITIES")
-CreateButton("🎯 Grab Gun (Teleport to Drop)", GrabGunFunction)
+CreateLabel("🔫 GUN UTILITIES & ESP")
+CreateButton("🎯 Grab Gun (Teleport & Touch)", GrabGunFunction)
 CreateToggle("Aura Grab Gun (Auto-Grab Drop)", "AuraGrab", nil)
+CreateToggle("Gun ESP (Highlight Dropped Gun)", "GunESP", function(val)
+    local drop = workspace:FindFirstChild("GunDrop")
+    if drop and drop:FindFirstChild("GunHighlight") then
+        drop.GunHighlight:Destroy()
+    end
+end)
 
 CreateLabel("👁️ VISUALS & ESP")
 CreateToggle("Player ESP (Roles Highlight)", "ESP", function(val)
@@ -375,13 +395,28 @@ CreateToggle("Player ESP (Roles Highlight)", "ESP", function(val)
 end)
 
 CreateLabel("🏃 MOVEMENT & MISC")
-CreateToggle("WalkSpeed Boost (2x)", "WalkSpeedToggle", function(val)
+CreateToggle("WalkSpeed Boost (32)", "WalkSpeedToggle", function(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = val and 32 or 16
     end
 end)
 CreateToggle("Infinite Jump", "InfJump", nil)
 CreateToggle("NoClip (Walk through walls)", "NoClip", nil)
+CreateToggle("Fly (Flight Mode)", "Fly", function(val)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    if val then
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "NexusFlyVelocity"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = char.HumanoidRootPart
+    else
+        if char.HumanoidRootPart:FindFirstChild("NexusFlyVelocity") then
+            char.HumanoidRootPart.NexusFlyVelocity:Destroy()
+        end
+    end
+end)
 
 CreateLabel("🎯 TELEPORTS")
 CreateButton("Teleport to Sheriff", function()
@@ -403,7 +438,7 @@ end)
 
 -- ====== ИГРОВЫЕ ЦИКЛЫ ======
 RunService.RenderStepped:Connect(function()
-    -- ESP Loop
+    -- ESP Loop (Players)
     if States.ESP then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
@@ -430,10 +465,40 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+
+    -- Gun ESP Loop
+    if States.GunESP then
+        local drop = workspace:FindFirstChild("GunDrop")
+        if drop then
+            local hl = drop:FindFirstChild("GunHighlight")
+            if not hl then
+                hl = Instance.new("Highlight")
+                hl.Name = "GunHighlight"
+                hl.FillColor = Color3.fromRGB(255, 255, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 200, 0)
+                hl.FillTransparency = 0.3
+                hl.Parent = drop
+            end
+        end
+    end
+
+    -- Fly Loop
+    if States.Fly and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local root = LocalPlayer.Character.HumanoidRootPart
+        local cam = workspace.CurrentCamera
+        local bv = root:FindFirstChild("NexusFlyVelocity")
+        if bv then
+            local moveDir = Vector3.new()
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
+            bv.Velocity = moveDir * 50
+        end
+    end
 end)
 
 RunService.Stepped:Connect(function()
-    -- NoClip Loop
     if States.NoClip and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then part.CanCollide = false end
@@ -442,27 +507,32 @@ RunService.Stepped:Connect(function()
 end)
 
 UserInputService.JumpRequest:Connect(function()
-    -- Infinite Jump Loop
     if States.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- Aura Grab & Auto Grab Gun Loop (Мгновенный перехват пистолета)
+-- Aura Grab Gun Loop
 task.spawn(function()
-    while task.wait(0.15) do
+    while task.wait(0.2) do
         if States.AuraGrab and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local gunCF = GetGunDropCFrame()
-            if gunCF then
+            local gunPart = GetGunDropPart()
+            if gunPart then
                 local rootPart = LocalPlayer.Character.HumanoidRootPart
                 local oldPos = rootPart.CFrame
-                rootPart.CFrame = gunCF + Vector3.new(0, 1, 0)
+                
+                pcall(function()
+                    firetouchinterest(rootPart, gunPart, 0)
+                    firetouchinterest(rootPart, gunPart, 1)
+                end)
+                
+                rootPart.CFrame = gunPart.CFrame + Vector3.new(0, 0.5, 0)
                 task.wait(0.05)
                 rootPart.CFrame = oldPos
-                task.wait(1) -- Задержка, чтобы не спамить телепорт после подбора
+                task.wait(1.5)
             end
         end
     end
 end)
 
-Notify("Overdrive V2.1 Ultimate успешно загружен!")
+Notify("Overdrive V3 с Gun ESP успешно загружен!")
