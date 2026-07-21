@@ -1,5 +1,5 @@
 -- =======================================================
--- 1. YARHM LOADER (Твое начало скрипта)
+-- ШАБЛОН ЗАГРУЗКИ С СИСТЕМНОЙ ПРОВЕРКОЙ (Твоя база)
 -- =======================================================
 local src = ""
 local StarterGui = game:GetService("StarterGui")
@@ -9,19 +9,15 @@ pcall(function()
 end)
 
 if src == "" then
-    StarterGui:SetCore("SendNotification", {
-        Title = "YARHM Outage";
-        Text = "YARHM Online is currently unavailable! Sorry for the inconvenience. Using YARHM Offline.";
-        Duration = 5;
-    })
-    src = game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/main/source/yarhm/1.21/yarhm.lua", false)
+  StarterGui:SetCore("SendNotification", {
+  	Title = "Nexus Hub // Status";
+  	Text = "Основной сервер недоступен. Запуск в автономном режиме с MM2 Overdrive.";
+	  Duration = 5;
+  })
 end
 
-loadstring(src)()
-
-
 -- =======================================================
--- 2. NEXUS HUB: DARK OVERDRIVE V5 (MM2 EDITION)
+-- ОСНОВНОЙ СКРИПТ: NEXUS HUB // MM2 OVERDRIVE EDITION
 -- =======================================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -42,10 +38,10 @@ local States = {
 }
 
 local function Notify(msg)
-    print("[NEXUS HUB]: " .. tostring(msg))
+    print("[NEXUS OVERDRIVE]: " .. tostring(msg))
 end
 
--- ====== ЛОГИКА ММ2 ======
+-- ====== ЛОГИКА ОПРЕДЕЛЕНИЯ РОЛЕЙ MM2 ======
 local function GetRole(player)
     if not player or not player.Character then return "Innocent" end
     local function checkContainer(container)
@@ -53,8 +49,11 @@ local function GetRole(player)
         for _, item in ipairs(container:GetChildren()) do
             if item:IsA("Tool") then
                 local name = item.Name:lower()
-                if name:find("knife") or name:find("blade") or name:find("dagger") then return "Murderer"
-                elseif name:find("gun") or name:find("revolver") or name:find("laser") then return "Sheriff" end
+                if name:find("knife") or name:find("blade") or name:find("dagger") or name:find("pitchfork") then 
+                    return "Murderer"
+                elseif name:find("gun") or name:find("revolver") or name:find("laser") then 
+                    return "Sheriff" 
+                end
             end
         end
         return nil
@@ -80,7 +79,7 @@ local function GetGunDrop()
     return workspace:FindFirstChild("GunDrop")
 end
 
--- ИСПРАВЛЕННЫЙ ПОИСК ПИСТОЛЕТА (Находит Revolver, Gun, Laser и т.д.)
+-- Надежный поиск оружия у игрока (Revolver / Gun / Laser)
 local function GetPlayerGun()
     local char = LocalPlayer.Character
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -97,7 +96,7 @@ local function GetPlayerGun()
     return check(char) or check(backpack)
 end
 
--- ====== ИНТЕРФЕЙС ======
+-- ====== ИНТЕРФЕЙС OVERDRIVE ======
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "NexusHub_Overdrive"
 ScreenGui.ResetOnSpawn = false
@@ -144,7 +143,7 @@ local Title = Instance.new("TextLabel", TopBar)
 Title.Size = UDim2.new(1, -20, 1, 0)
 Title.Position = UDim2.new(0, 15, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚡ NEXUS HUB // OVERDRIVE EDITION"
+Title.Text = "⚡ NEXUS HUB // OVERDRIVE MM2"
 Title.TextColor3 = Color3.fromRGB(0, 255, 180)
 Title.Font = Enum.Font.GothamBlack
 Title.TextSize = 13
@@ -223,7 +222,7 @@ local function AddButton(text, cb)
     btn.MouseButton1Click:Connect(cb)
 end
 
--- ИСПРАВЛЕННАЯ СТРЕЛЬБА
+-- ПЛАВАЮЩАЯ КНОПКА СТРЕЛЬБЫ
 local ShootFloatBtn = Instance.new("TextButton", ScreenGui)
 ShootFloatBtn.Size = UDim2.new(0, 160, 0, 44)
 ShootFloatBtn.Position = UDim2.new(0.5, -80, 0.6, 0)
@@ -246,39 +245,35 @@ local function ExecuteShoot()
 
     local gun = GetPlayerGun()
     if not gun then
-        return Notify("У тебя нет пушки (Шериф мертв или ты не Шериф)!")
+        return Notify("У тебя нет оружия в руках или инвентаре!")
     end
 
     if gun.Parent == LocalPlayer:FindFirstChild("Backpack") then
         LocalPlayer.Character.Humanoid:EquipTool(gun)
-        task.wait(0.1) -- Ждем пока достанется пушка
+        task.wait(0.1)
     end
 
     local cam = workspace.CurrentCamera
     local targetPos = murderer.Character.HumanoidRootPart.Position
     local oldCFrame = cam.CFrame
     
-    -- Наводимся на убийцу
     cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
-    task.wait(0.1)
-    
-    -- Делаем выстрел
+    task.wait(0.08)
     pcall(function() gun:Activate() end)
-    
-    task.wait(0.15)
-    cam.CFrame = oldCFrame -- Возвращаем камеру
-    Notify("Выстрел произведен!")
+    task.wait(0.1)
+    cam.CFrame = oldCFrame
+    Notify("Выстрел в убийцу выполнен!")
 end
 
 ShootFloatBtn.MouseButton1Click:Connect(ExecuteShoot)
 
--- Меню
-AddCategory("⚔️ БОЕВОЙ РЕЖИМ")
+-- ФУНКЦИОНАЛ МЕНЮ
+AddCategory("⚔️ БОЙ И СТРЕЛЬБА")
 AddToggle("Плавающая кнопка стрельбы", "FloatButton", function(v) ShootFloatBtn.Visible = v end)
 AddButton("⚡ Выстрелить в убийцу", ExecuteShoot)
 
 AddCategory("🔫 ОРУЖИЕ")
-AddButton("🎯 Магнит пистолета (Grab Gun)", function()
+AddButton("🎯 Подобрать пистолет с земли", function()
     local drop = GetGunDrop()
     if drop and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local r = LocalPlayer.Character.HumanoidRootPart
@@ -288,30 +283,33 @@ AddButton("🎯 Магнит пистолета (Grab Gun)", function()
             pcall(function() firetouchinterest(r, part, 0); firetouchinterest(r, part, 1) end)
             r.CFrame = part.CFrame + Vector3.new(0, 0.5, 0)
             task.wait(0.05); r.CFrame = old
+            Notify("Пистолет подобран!")
         end
+    else
+        Notify("Упавший пистолет не найден!")
     end
 end)
-AddToggle("Авто-подбор пушки (Aura)", "AuraGrab", nil)
-AddToggle("Подсветка пушки на полу", "GunESP", nil)
+AddToggle("Авто-подбор пистолета (Aura)", "AuraGrab", nil)
+AddToggle("Подсветка выпавшего пистолета", "GunESP", nil)
 
-AddCategory("👁️ ВИЗУАЛЫ")
-AddToggle("ESP Ролей", "ESP", function(v)
+AddCategory("👁️ ВИЗУАЛЫ И РОЛИ")
+AddToggle("ESP Ролей (Murderer/Sheriff)", "ESP", function(v)
     if not v then
         for _, p in ipairs(Players:GetPlayers()) do
             if p.Character and p.Character:FindFirstChild("NX_ESP") then p.Character.NX_ESP:Destroy() end
         end
     end
 end)
-AddToggle("Светлая карта (Fullbright)", "Fullbright", function(v)
+AddToggle("Полное освещение (Fullbright)", "Fullbright", function(v)
     Lighting.Brightness = v and 2 or 1
     Lighting.ClockTime = v and 14 or 12
     Lighting.GlobalShadows = not v
 end)
 
-AddCategory("🏃 ДВИЖЕНИЕ")
-AddToggle("Бесконечный прыжок", "InfJump", nil)
+AddCategory("🏃 ПЕРЕДВИЖЕНИЕ")
+AddToggle("Бесконечный прыжок (Inf Jump)", "InfJump", nil)
 AddToggle("Ходить сквозь стены (NoClip)", "NoClip", nil)
-AddToggle("Полет (Fly)", "Fly", function(v)
+AddToggle("Режим полета (Fly)", "Fly", function(v)
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     if v then
@@ -324,7 +322,7 @@ AddToggle("Полет (Fly)", "Fly", function(v)
     end
 end)
 
--- Основной цикл обновления
+-- ГЛОБАЛЬНЫЕ ЦИКЛЫ ОБРАБОТКИ
 RunService.RenderStepped:Connect(function()
     if States.ESP then
         for _, p in ipairs(Players:GetPlayers()) do
@@ -332,7 +330,16 @@ RunService.RenderStepped:Connect(function()
                 local hl = p.Character:FindFirstChild("NX_ESP") or Instance.new("Highlight", p.Character)
                 hl.Name = "NX_ESP"
                 local r = GetRole(p)
-                hl.FillColor = r == "Murderer" and Color3.fromRGB(255, 40, 40) or (r == "Sheriff" and Color3.fromRGB(40, 120, 255) or Color3.fromRGB(40, 255, 40))
+                if r == "Murderer" then
+                    hl.FillColor = Color3.fromRGB(255, 40, 40)
+                    hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+                elseif r == "Sheriff" then
+                    hl.FillColor = Color3.fromRGB(40, 120, 255)
+                    hl.OutlineColor = Color3.fromRGB(0, 80, 255)
+                else
+                    hl.FillColor = Color3.fromRGB(40, 255, 40)
+                    hl.OutlineColor = Color3.fromRGB(0, 255, 0)
+                end
             end
         end
     end
@@ -340,7 +347,8 @@ RunService.RenderStepped:Connect(function()
     local drop = GetGunDrop()
     if States.GunESP and drop then
         local hl = drop:FindFirstChild("NX_GunHL") or Instance.new("Highlight", drop)
-        hl.Name = "NX_GunHL"; hl.FillColor = Color3.fromRGB(255, 220, 0)
+        hl.Name = "NX_GunHL"
+        hl.FillColor = Color3.fromRGB(255, 220, 0)
     elseif not States.GunESP and drop and drop:FindFirstChild("NX_GunHL") then
         drop.NX_GunHL:Destroy()
     end
@@ -369,11 +377,13 @@ RunService.Stepped:Connect(function()
 end)
 
 UserInputService.JumpRequest:Connect(function()
-    if States.InfJump and LocalPlayer.Character then LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+    if States.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then 
+        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) 
+    end
 end)
 
 task.spawn(function()
-    while task.wait(0.2) do
+    while task.wait(0.3) do
         if States.AuraGrab and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local drop = GetGunDrop()
             if drop then
@@ -383,11 +393,12 @@ task.spawn(function()
                 if part then
                     pcall(function() firetouchinterest(r, part, 0); firetouchinterest(r, part, 1) end)
                     r.CFrame = part.CFrame + Vector3.new(0, 0.5, 0)
-                    task.wait(0.05); r.CFrame = old; task.wait(1.5)
+                    task.wait(0.05); r.CFrame = old
+                    task.wait(1.5)
                 end
             end
         end
     end
 end)
 
-Notify("YARHM + Nexus Hub V5 загружены!")
+Notify("Nexus Hub MM2 Overdrive успешно инициализирован!")
