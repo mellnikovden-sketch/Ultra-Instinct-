@@ -1,16 +1,12 @@
--- YARHM MM2 Overdrive Style - Fixed & Working Version
-if not game:IsLoaded() then 
-    game.Loaded:Wait() 
-end
+-- YARHM MM2 - Mobile Version (Для телефона)
+if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
-local camera = Workspace.CurrentCamera
 
 local YARHM = Instance.new("ScreenGui")
 YARHM.Name = "YARHM_MM2"
@@ -19,141 +15,125 @@ YARHM.IgnoreGuiInset = true
 YARHM.DisplayOrder = 999
 YARHM.Parent = game:GetService("CoreGui")
 
+-- Большой удобный фрейм для телефона
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 400, 0, 520)
-Main.Position = UDim2.new(0.5, -200, 0.5, -260)
-Main.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-Main.BorderSizePixel = 0
+Main.Size = UDim2.new(0.9, 0, 0.85, 0)  -- Почти на весь экран
+Main.Position = UDim2.new(0.05, 0, 0.075, 0)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 Main.Parent = YARHM
 
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 16)
-local stroke = Instance.new("UIStroke", Main)
-stroke.Color = Color3.fromRGB(90, 140, 255)
-stroke.Thickness = 2
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 20)
 
--- Title
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 60)
+Title.Size = UDim2.new(1, 0, 0, 80)
 Title.BackgroundTransparency = 1
 Title.Text = "YARHM MM2"
-Title.TextColor3 = Color3.fromRGB(110, 180, 255)
+Title.TextColor3 = Color3.fromRGB(100, 180, 255)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBlack
 Title.Parent = Main
 
--- Tabs
-local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, -20, 0, 50)
-TabFrame.Position = UDim2.new(0, 10, 0, 65)
-TabFrame.BackgroundTransparency = 1
-TabFrame.Parent = Main
+-- Tabs (большие для пальцев)
+local tabHolder = Instance.new("Frame")
+tabHolder.Size = UDim2.new(1, -40, 0, 70)
+tabHolder.Position = UDim2.new(0, 20, 0, 90)
+tabHolder.BackgroundTransparency = 1
+tabHolder.Parent = Main
 
 local CombatTab = Instance.new("ScrollingFrame")
 local VisualsTab = Instance.new("ScrollingFrame")
 local MiscTab = Instance.new("ScrollingFrame")
 
 for _, tab in pairs({CombatTab, VisualsTab, MiscTab}) do
-    tab.Size = UDim2.new(1, -20, 1, -130)
-    tab.Position = UDim2.new(0, 10, 0, 125)
+    tab.Size = UDim2.new(1, -40, 1, -200)
+    tab.Position = UDim2.new(0, 20, 0, 180)
     tab.BackgroundTransparency = 1
-    tab.ScrollBarThickness = 6
+    tab.ScrollBarThickness = 8
     tab.Visible = false
     tab.Parent = Main
-    Instance.new("UIListLayout", tab).Padding = UDim.new(0, 12)
+    Instance.new("UIListLayout", tab).Padding = UDim.new(0, 15)
 end
 
 CombatTab.Visible = true
-local currentTab = CombatTab
 
-local function createTabButton(name, targetTab)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.33, -8, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-    btn.Text = name
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 16
-    btn.Parent = TabFrame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
-    
-    btn.MouseButton1Click:Connect(function()
-        currentTab.Visible = false
-        targetTab.Visible = true
-        currentTab = targetTab
-    end)
-end
-
-createTabButton("Combat", CombatTab)
-createTabButton("Visuals", VisualsTab)
-createTabButton("Misc", MiscTab)
-
--- Settings
-local Settings = getgenv().YARHM_Settings or {ESP = false, SilentAim = false, AutoKnife = false}
-getgenv().YARHM_Settings = Settings
-
--- Simple Toggle
-local function addToggle(parent, text, key)
-    local enabled = Settings[key] or false
+local function CreateBigToggle(parent, text)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -20, 0, 50)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    frame.Size = UDim2.new(1, 0, 0, 85)  -- Большая кнопка
+    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
     frame.Parent = parent
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 18)
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Size = UDim2.new(0.65, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = "  " .. text
     label.TextColor3 = Color3.new(1,1,1)
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 17
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamSemibold
     label.Parent = frame
     
     local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(0, 80, 0, 32)
-    toggle.Position = UDim2.new(1, -90, 0.5, -16)
-    toggle.BackgroundColor3 = enabled and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(90, 90, 100)
-    toggle.Text = enabled and "ON" or "OFF"
+    toggle.Size = UDim2.new(0.3, 0, 0.7, 0)
+    toggle.Position = UDim2.new(0.67, 0, 0.15, 0)
+    toggle.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+    toggle.Text = "OFF"
     toggle.TextColor3 = Color3.new(1,1,1)
+    toggle.TextScaled = true
     toggle.Font = Enum.Font.GothamBold
     toggle.Parent = frame
-    Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 14)
     
+    local enabled = false
     toggle.MouseButton1Click:Connect(function()
         enabled = not enabled
-        Settings[key] = enabled
-        toggle.BackgroundColor3 = enabled and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(90, 90, 100)
+        toggle.BackgroundColor3 = enabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(80, 80, 90)
         toggle.Text = enabled and "ON" or "OFF"
     end)
 end
 
--- Add toggles
-addToggle(CombatTab, "Silent Aim", "SilentAim")
-addToggle(CombatTab, "Auto Knife", "AutoKnife")
-addToggle(VisualsTab, "ESP", "ESP")
+-- Добавляем кнопки
+CreateBigToggle(CombatTab, "Silent Aim")
+CreateBigToggle(CombatTab, "Auto Knife")
+CreateBigToggle(CombatTab, "Auto Shoot")
+CreateBigToggle(VisualsTab, "ESP")
+CreateBigToggle(VisualsTab, "Gun ESP")
+CreateBigToggle(MiscTab, "Fly")
+CreateBigToggle(MiscTab, "Godmode")
+CreateBigToggle(MiscTab, "Auto Farm")
 
--- Draggable
-local dragging = false
-Main.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
+-- Переключение табов
+local tabsList = {CombatTab, VisualsTab, MiscTab}
+local current = 1
+
+local function switchTab()
+    for i, tab in ipairs(tabsList) do
+        tab.Visible = (i == current)
     end
-end)
+end
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        -- basic drag (можно расширить)
-    end
-end)
+-- Простые кнопки табов
+for i, name in ipairs({"Combat", "Visuals", "Misc"}) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.3, 0, 1, 0)
+    btn.Position = UDim2.new((i-1)*0.33, 5, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    btn.Text = name
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.TextScaled = true
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = tabHolder
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
+    
+    btn.MouseButton1Click:Connect(function()
+        current = i
+        switchTab()
+    end)
+end
 
-Main.InputEnded:Connect(function()
-    dragging = false
-end)
-
-print("✅ YARHM MM2 Fixed Version запущен!")
+print("✅ YARHM MM2 Mobile Version запущен!")
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "YARHM MM2",
-    Text = "Скрипт успешно запущен!",
-    Duration = 5
+    Text = "Мобильная версия загружена! Используй большие кнопки.",
+    Duration = 8
 })
