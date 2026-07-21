@@ -1,5 +1,5 @@
 -- =======================================================
--- ШАБЛОН ЗАГРУЗКИ С СИСТЕМНОЙ ПРОВЕРКОЙ (Твоя база)
+-- ЗАГРУЗЧИК С СИСТЕМНОЙ ПРОВЕРКОЙ (В стиле YARHM)
 -- =======================================================
 local src = ""
 local StarterGui = game:GetService("StarterGui")
@@ -9,15 +9,17 @@ pcall(function()
 end)
 
 if src == "" then
-  StarterGui:SetCore("SendNotification", {
-  	Title = "Nexus Hub // Status";
-  	Text = "Основной сервер недоступен. Запуск в автономном режиме с MM2 Overdrive.";
-	  Duration = 5;
-  })
+  pcall(function()
+      StarterGui:SetCore("SendNotification", {
+          Title = "Nexus Hub // Connection";
+          Text = "Основной сервер недоступен. Запуск автономного ядра Overdrive.";
+          Duration = 4;
+      })
+  end)
 end
 
 -- =======================================================
--- ОСНОВНОЙ СКРИПТ: NEXUS HUB // MM2 OVERDRIVE EDITION
+-- ОСНОВНОЙ СКРИПТ: NEXUS OVERDRIVE (MM2 EDITION)
 -- =======================================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -38,6 +40,13 @@ local States = {
 }
 
 local function Notify(msg)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Nexus Overdrive";
+            Text = tostring(msg);
+            Duration = 3;
+        })
+    end)
     print("[NEXUS OVERDRIVE]: " .. tostring(msg))
 end
 
@@ -79,7 +88,7 @@ local function GetGunDrop()
     return workspace:FindFirstChild("GunDrop")
 end
 
--- Надежный поиск оружия у игрока (Revolver / Gun / Laser)
+-- Исправленный поиск оружия (поддерживает Revolver, Gun, Laser)
 local function GetPlayerGun()
     local char = LocalPlayer.Character
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -96,74 +105,78 @@ local function GetPlayerGun()
     return check(char) or check(backpack)
 end
 
--- ====== ИНТЕРФЕЙС OVERDRIVE ======
+-- ====== ИНТЕРФЕЙС OVERDRIVE / YARHM STYLE ======
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NexusHub_Overdrive"
+ScreenGui.Name = "NexusOverdrive_MM2"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = CoreGui
 
 for _, gui in ipairs(CoreGui:GetChildren()) do
-    if gui.Name == "NexusHub_Overdrive" and gui ~= ScreenGui then gui:Destroy() end
+    if gui.Name == "NexusOverdrive_MM2" and gui ~= ScreenGui then gui:Destroy() end
 end
 
+-- Кнопка сворачивания/разворачивания меню
 local ToggleBtn = Instance.new("TextButton", ScreenGui)
-ToggleBtn.Size = UDim2.new(0, 58, 0, 58)
+ToggleBtn.Size = UDim2.new(0, 56, 0, 56)
 ToggleBtn.Position = UDim2.new(0, 15, 0.35, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 ToggleBtn.Text = "NEXUS"
-ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 180)
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 170)
 ToggleBtn.Font = Enum.Font.GothamBlack
-ToggleBtn.TextSize = 11
+ToggleBtn.TextSize = 10
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 local TBStroke = Instance.new("UIStroke", ToggleBtn)
-TBStroke.Color = Color3.fromRGB(0, 255, 180)
+TBStroke.Color = Color3.fromRGB(0, 255, 170)
 TBStroke.Thickness = 2
 
+-- Главное окно
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 520, 0, 340)
-MainFrame.Position = UDim2.new(0.5, -260, 0.5, -170)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+MainFrame.Size = UDim2.new(0, 500, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Visible = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(0, 255, 180)
-MainStroke.Transparency = 0.7
+MainStroke.Color = Color3.fromRGB(0, 255, 170)
+MainStroke.Transparency = 0.5
 MainStroke.Thickness = 1.5
 
 ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
+-- Шапка
 local TopBar = Instance.new("Frame", MainFrame)
-TopBar.Size = UDim2.new(1, 0, 0, 42)
-TopBar.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
-Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 12)
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 10)
 
 local Title = Instance.new("TextLabel", TopBar)
 Title.Size = UDim2.new(1, -20, 1, 0)
 Title.Position = UDim2.new(0, 15, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚡ NEXUS HUB // OVERDRIVE MM2"
-Title.TextColor3 = Color3.fromRGB(0, 255, 180)
+Title.Text = "⚡ NEXUS OVERDRIVE // MM2 EDITION"
+Title.TextColor3 = Color3.fromRGB(0, 255, 170)
 Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 13
+Title.TextSize = 12
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
+-- Скролл контента
 local Content = Instance.new("ScrollingFrame", MainFrame)
-Content.Size = UDim2.new(1, -20, 1, -55)
-Content.Position = UDim2.new(0, 10, 0, 48)
+Content.Size = UDim2.new(1, -20, 1, -50)
+Content.Position = UDim2.new(0, 10, 0, 45)
 Content.BackgroundTransparency = 1
-Content.ScrollBarThickness = 4
-Content.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 180)
+Content.ScrollBarThickness = 3
+Content.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 170)
 local UIList = Instance.new("UIListLayout", Content)
-UIList.Padding = UDim.new(0, 8)
+UIList.Padding = UDim.new(0, 6)
 
 local function AddCategory(text)
     local lbl = Instance.new("TextLabel", Content)
-    lbl.Size = UDim2.new(1, -10, 0, 24)
+    lbl.Size = UDim2.new(1, -10, 0, 22)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
-    lbl.TextColor3 = Color3.fromRGB(90, 200, 255)
+    lbl.TextColor3 = Color3.fromRGB(80, 190, 255)
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -171,70 +184,70 @@ end
 
 local function AddToggle(text, key, cb)
     local f = Instance.new("Frame", Content)
-    f.Size = UDim2.new(1, -10, 0, 40)
-    f.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
-    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 8)
+    f.Size = UDim2.new(1, -10, 0, 38)
+    f.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
     
     local lbl = Instance.new("TextLabel", f)
-    lbl.Size = UDim2.new(1, -65, 1, 0)
-    lbl.Position = UDim2.new(0, 12, 0, 0)
+    lbl.Size = UDim2.new(1, -60, 1, 0)
+    lbl.Position = UDim2.new(0, 10, 0, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
-    lbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+    lbl.TextColor3 = Color3.fromRGB(210, 210, 220)
     lbl.Font = Enum.Font.GothamSemibold
-    lbl.TextSize = 12
+    lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     
     local btn = Instance.new("TextButton", f)
-    btn.Size = UDim2.new(0, 40, 0, 20)
-    btn.Position = UDim2.new(1, -50, 0.5, -10)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+    btn.Size = UDim2.new(0, 36, 0, 18)
+    btn.Position = UDim2.new(1, -45, 0.5, -9)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
     btn.Text = ""
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     
     local c = Instance.new("Frame", btn)
-    c.Size = UDim2.new(0, 16, 0, 16)
-    c.Position = UDim2.new(0, 2, 0.5, -8)
-    c.BackgroundColor3 = Color3.fromRGB(160, 160, 175)
+    c.Size = UDim2.new(0, 14, 0, 14)
+    c.Position = UDim2.new(0, 2, 0.5, -7)
+    c.BackgroundColor3 = Color3.fromRGB(150, 150, 160)
     Instance.new("UICorner", c).CornerRadius = UDim.new(1, 0)
     
     btn.MouseButton1Click:Connect(function()
         States[key] = not States[key]
-        btn.BackgroundColor3 = States[key] and Color3.fromRGB(0, 210, 150) or Color3.fromRGB(30, 30, 42)
-        c.Position = States[key] and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-        c.BackgroundColor3 = States[key] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 160, 175)
+        btn.BackgroundColor3 = States[key] and Color3.fromRGB(0, 200, 140) or Color3.fromRGB(35, 35, 48)
+        c.Position = States[key] and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+        c.BackgroundColor3 = States[key] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
         if cb then cb(States[key]) end
     end)
 end
 
 local function AddButton(text, cb)
     local btn = Instance.new("TextButton", Content)
-    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Size = UDim2.new(1, -10, 0, 36)
     btn.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(0, 255, 180)
+    btn.TextColor3 = Color3.fromRGB(0, 255, 170)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.TextSize = 11
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     local s = Instance.new("UIStroke", btn)
-    s.Color = Color3.fromRGB(0, 255, 180)
-    s.Transparency = 0.6
+    s.Color = Color3.fromRGB(0, 255, 170)
+    s.Transparency = 0.5
     btn.MouseButton1Click:Connect(cb)
 end
 
--- ПЛАВАЮЩАЯ КНОПКА СТРЕЛЬБЫ
+-- ПЛАВАЮЩАЯ КНОПКА СТРЕЛЬБЫ В УБИЙЦУ
 local ShootFloatBtn = Instance.new("TextButton", ScreenGui)
-ShootFloatBtn.Size = UDim2.new(0, 160, 0, 44)
-ShootFloatBtn.Position = UDim2.new(0.5, -80, 0.6, 0)
-ShootFloatBtn.BackgroundColor3 = Color3.fromRGB(25, 15, 20)
+ShootFloatBtn.Size = UDim2.new(0, 150, 0, 40)
+ShootFloatBtn.Position = UDim2.new(0.5, -75, 0.58, 0)
+ShootFloatBtn.BackgroundColor3 = Color3.fromRGB(30, 15, 20)
 ShootFloatBtn.Text = "🎯 СТРЕЛЯТЬ В УБИЙЦУ"
-ShootFloatBtn.TextColor3 = Color3.fromRGB(255, 80, 100)
+ShootFloatBtn.TextColor3 = Color3.fromRGB(255, 70, 90)
 ShootFloatBtn.Font = Enum.Font.GothamBlack
-ShootFloatBtn.TextSize = 11
+ShootFloatBtn.TextSize = 10
 ShootFloatBtn.Visible = true
-Instance.new("UICorner", ShootFloatBtn).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", ShootFloatBtn).CornerRadius = UDim.new(0, 8)
 local SFBStroke = Instance.new("UIStroke", ShootFloatBtn)
-SFBStroke.Color = Color3.fromRGB(255, 50, 80)
+SFBStroke.Color = Color3.fromRGB(255, 50, 70)
 SFBStroke.Thickness = 1.5
 
 local function ExecuteShoot()
@@ -267,7 +280,7 @@ end
 
 ShootFloatBtn.MouseButton1Click:Connect(ExecuteShoot)
 
--- ФУНКЦИОНАЛ МЕНЮ
+-- ИНТЕРФЕЙСНЫЕ ЭЛЕМЕНТЫ
 AddCategory("⚔️ БОЙ И СТРЕЛЬБА")
 AddToggle("Плавающая кнопка стрельбы", "FloatButton", function(v) ShootFloatBtn.Visible = v end)
 AddButton("⚡ Выстрелить в убийцу", ExecuteShoot)
@@ -281,12 +294,12 @@ AddButton("🎯 Подобрать пистолет с земли", function()
         local part = drop:IsA("Model") and (drop:FindFirstChild("Handle") or drop:FindFirstChildWhichIsA("BasePart")) or drop
         if part then
             pcall(function() firetouchinterest(r, part, 0); firetouchinterest(r, part, 1) end)
-            r.CFrame = part.CFrame + Vector3.new(0, 0.5, 0)
+            r.CFrame = part.CFrame + Vector3.new(0, 0.4, 0)
             task.wait(0.05); r.CFrame = old
             Notify("Пистолет подобран!")
         end
     else
-        Notify("Упавший пистолет не найден!")
+        Notify("Выпавший пистолет не найден!")
     end
 end)
 AddToggle("Авто-подбор пистолета (Aura)", "AuraGrab", nil)
@@ -322,7 +335,7 @@ AddToggle("Режим полета (Fly)", "Fly", function(v)
     end
 end)
 
--- ГЛОБАЛЬНЫЕ ЦИКЛЫ ОБРАБОТКИ
+-- ГЛОБАЛЬНЫЕ ЦИКЛЫ
 RunService.RenderStepped:Connect(function()
     if States.ESP then
         for _, p in ipairs(Players:GetPlayers()) do
@@ -392,7 +405,7 @@ task.spawn(function()
                 local part = drop:IsA("Model") and (drop:FindFirstChild("Handle") or drop:FindFirstChildWhichIsA("BasePart")) or drop
                 if part then
                     pcall(function() firetouchinterest(r, part, 0); firetouchinterest(r, part, 1) end)
-                    r.CFrame = part.CFrame + Vector3.new(0, 0.5, 0)
+                    r.CFrame = part.CFrame + Vector3.new(0, 0.4, 0)
                     task.wait(0.05); r.CFrame = old
                     task.wait(1.5)
                 end
@@ -401,4 +414,4 @@ task.spawn(function()
     end
 end)
 
-Notify("Nexus Hub MM2 Overdrive успешно инициализирован!")
+Notify("Nexus Overdrive MM2 успешно запущен!")
