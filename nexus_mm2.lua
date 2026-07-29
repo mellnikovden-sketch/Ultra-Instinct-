@@ -1,583 +1,577 @@
--- MM2 Murderer Aim Lock V2.6 (ABSOLUTE HARD LOCK) + BIND BUTTON
--- [FIX] Мгновенное наведение и неотрывное удержание
+-- ================================================================================================
+-- ⚡⚡⚡ ULTRA INSTINCT V24.3 ULTRA-LITE+ ⚡⚡⚡
+-- 5 УЛЬТРА-РЕЖИМОВ: PRO | INSTINCT | SECRETIVE | ANNIHILATING | ADAPTIVE
+-- В МЕНЮ: вкл/выкл, выбор режима, тогглы физики, статистика
+-- ================================================================================================
+
 local shared = odh_shared_plugins
-local my_section = shared.AddSection("⚡ MM2 AIMLOCK | V2.6 HARD LOCK")
+local section = shared.AddSection("⚡ ULTRA INSTINCT ULTRA-LITE ⚡")
+
+local internal_shared = odh_internal_shared
+local gpl_preset = internal_shared.MM2_GPL
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
-
 local LocalPlayer = Players.LocalPlayer
 
--- ==============================================
--- MAID (для очистки) + BINDABLE BUTTONS (из BJP.lua)
--- ==============================================
-local Maid = {}
-Maid.__index = Maid
+local math_clamp = math.clamp
+local math_abs = math.abs
+local math_floor = math.floor
+local os_clock = os.clock
+local os_time = os.time
+local collectgarbage = collectgarbage
+local pairs = pairs
+local ipairs = ipairs
+local table_insert = table.insert
+local table_remove = table.remove
+local Vector3_new = Vector3.new
 
-function Maid.new()
-    return setmetatable({_tasks = {}, _destroyed = false}, Maid)
-end
+local VERSION = "24.3 ULTRA-LITE+"
+local GRAVITY = 196.2
+local BULLET_SPEED = 2500
+local MAX_HISTORY = 50
+local DEFAULT_REACTION = 0.15
+local ADAPTIVE_GAIN = 0.05
+local MAX_ADAPTIVE_OFFSET = 3.0
+local MAX_THREAT_DISTANCE = 500
 
-function Maid:GiveTask(task)
-    if self._destroyed then self:_cleanupTask(task) return end
-    table.insert(self._tasks, task)
-    return task
-end
-
-function Maid:GiveTasks(...)
-    for _, t in ipairs({...}) do self:GiveTask(t) end
-end
-
-function Maid:_cleanupTask(task)
-    local t = typeof(task)
-    if t == "RBXScriptConnection" then task:Disconnect()
-    elseif t == "Instance" then task:Destroy()
-    elseif t == "function" then task()
-    elseif t == "table" and type(task.Destroy) == "function" then task:Destroy()
-    end
-end
-
-function Maid:DoCleaning()
-    if self._destroyed then return end
-    self._destroyed = true
-    for _, task in ipairs(self._tasks) do self:_cleanupTask(task) end
-    self._tasks = {}
-end
-
-function Maid:Destroy() self:DoCleaning() end
-
-local RootMaid = Maid.new()
-
--- Вспомогательные функции для кнопок
-local function getfserv(s)
-    local ok, svc = pcall(function() return game:GetService(s) end)
-    if ok and svc then return svc end
-    ok, svc = pcall(function() return game:FindService(s) end)
-    if ok and svc then return svc end
-    return game[s]
-end
-
-local __RS   = getfserv("RunService")
-local __UIS  = getfserv("UserInputService")
-local __PLRS = getfserv("Players")
-local __TS   = getfserv("TweenService")
-
-local __UD2 = UDim2.new
-local __UD  = UDim.new
-local __V2  = Vector2.new
-local __PCLR = Color3.new
-local __RGB  = Color3.fromRGB
-
--- Bindable Buttons
-local BindableButtons = {Buttons = {}, Maids = {}, Count = 0}
-
-local __SHAPES = {
-    [0] = "rbxassetid://86221076925479",
-    [1] = "rbxassetid://96242665417546",
-    [2] = "rbxassetid://97129189935336",
-    [3] = "rbxassetid://76165862027868",
-    [4] = "rbxassetid://125868092127496"
+-- ====== 5 УЛЬТРА-РЕЖИМОВ ======
+local MODES = {
+    PRO = {
+        name = "PRO",
+        desc = "Сбалансированный для опытных",
+        h_base = 125, h_ping = 0.22, h_speed = 1.5,
+        v_base = 125, v_ping = 0.14, v_dist = 0.18,
+        sim_base = 35, sim_speed = 0.4,
+        int_base = 50, int_speed = -0.3,
+        offX = -2, offY = 0, offZ = 0,
+    },
+    INSTINCT = {
+        name = "INSTINCT",
+        desc = "Максимальное упреждение для атаки",
+        h_base = 145, h_ping = 0.30, h_speed = 1.8,
+        v_base = 140, v_ping = 0.18, v_dist = 0.22,
+        sim_base = 45, sim_speed = 0.5,
+        int_base = 35, int_speed = -0.2,
+        offX = -3, offY = 0, offZ = 2,
+    },
+    SECRETIVE = {
+        name = "SECRETIVE",
+        desc = "Минимальное смещение для скрытности",
+        h_base = 105, h_ping = 0.15, h_speed = 1.0,
+        v_base = 105, v_ping = 0.10, v_dist = 0.12,
+        sim_base = 28, sim_speed = 0.2,
+        int_base = 60, int_speed = -0.4,
+        offX = 0, offY = 0, offZ = -1,
+    },
+    ANNIHILATING = {
+        name = "ANNIHILATING",
+        desc = "Экстремальное упреждение",
+        h_base = 185, h_ping = 0.50, h_speed = 3.0,
+        v_base = 175, v_ping = 0.30, v_dist = 0.35,
+        sim_base = 65, sim_speed = 1.0,
+        int_base = 20, int_speed = -0.05,
+        offX = -5, offY = 0, offZ = 5,
+    },
+    ADAPTIVE = {
+        name = "ADAPTIVE",
+        desc = "Авто-переключение по дистанции",
+        h_base = 125, h_ping = 0.22, h_speed = 1.5,
+        v_base = 125, v_ping = 0.14, v_dist = 0.18,
+        sim_base = 35, sim_speed = 0.4,
+        int_base = 50, int_speed = -0.3,
+        offX = -2, offY = 0, offZ = 0,
+        auto_switch = true,
+    },
 }
 
-local __NORMAL_COLOR = ColorSequence.new({
-    ColorSequenceKeypoint.new(0,   __PCLR(0.133333, 0.827451, 0.494118)),
-    ColorSequenceKeypoint.new(0.6, __PCLR(0.231373, 0.509804, 0.498039)),
-    ColorSequenceKeypoint.new(1,   __PCLR(0.501961, 0.501961, 0.501961))
-})
+local ADAPTIVE_SUBS = {
+    CLOSE = { h_base = 135, h_ping = 0.28, h_speed = 1.8, v_base = 135, v_ping = 0.18, v_dist = 0.22, sim_base = 42, sim_speed = 0.5, int_base = 38, int_speed = -0.2, offX = -4, offY = 0, offZ = 3 },
+    MID   = { h_base = 125, h_ping = 0.22, h_speed = 1.5, v_base = 125, v_ping = 0.14, v_dist = 0.18, sim_base = 35, sim_speed = 0.4, int_base = 50, int_speed = -0.3, offX = -2, offY = 0, offZ = 1 },
+    SNIPER = { h_base = 95,  h_ping = 0.10, h_speed = 0.8, v_base = 95,  v_ping = 0.08, v_dist = 0.10, sim_base = 22, sim_speed = 0.15, int_base = 68, int_speed = -0.5, offX = 1, offY = 0, offZ = -2 },
+    DEF   = { h_base = 105, h_ping = 0.15, h_speed = 1.0, v_base = 105, v_ping = 0.10, v_dist = 0.12, sim_base = 28, sim_speed = 0.2, int_base = 60, int_speed = -0.4, offX = 0, offY = 0, offZ = -1 },
+}
 
-local __ACTIVE_COLOR = ColorSequence.new({
-    ColorSequenceKeypoint.new(0,   __PCLR(0.0, 0.8, 0.4)),
-    ColorSequenceKeypoint.new(0.6, __PCLR(0.0, 0.5, 0.3)),
-    ColorSequenceKeypoint.new(1,   __PCLR(0.2, 0.8, 0.6))
-})
+-- ====== СОСТОЯНИЕ ======
+local State = {
+    Enabled = false,
+    Target = nil,
+    TargetLockTime = 0,
+    LastGC = 0,
+    LastCheck = 0,
+    LastApplied = {H=-999,V=-999,Sim=-999,Int=-999,X=-999,Y=-999,Z=-999},
+    MyRoot = nil,
+    MyChar = nil,
+    TargetPosHistory = {},
+    TargetVelHistory = {},
+    SmoothPos = nil,
+    SmoothVel = nil,
+    PingHistory = {},
+    PingSmooth = 60,
+    CurrentMode = "ADAPTIVE",
+    Settings = {
+        leadMultiplier = 1.0,
+        verticalCorrection = 1.0,
+        reactionTime = DEFAULT_REACTION,
+        minDistance = 3,
+        maxDistance = 350,
+        useGravity = true,
+        useDrag = true,
+        predictJump = true,
+        targetLock = true,
+        lockTime = 2.0,
+        prioritySystem = true,
+        adaptiveLead = true,
+        adaptiveGain = ADAPTIVE_GAIN,
+        maxAdaptiveOffset = MAX_ADAPTIVE_OFFSET,
+    },
+    Stats = {
+        Shots = 0, Hits = 0, Misses = 0,
+        TotalDamage = 0, Kills = 0, Deaths = 0,
+        Accuracy = 0, StartTime = os_time(),
+        BestStreak = 0, CurrentStreak = 0,
+    },
+    LastError = Vector3_new(0,0,0),
+    ErrorHistory = {},
+    AdaptiveOffset = {x=0, y=0, z=0},
+    AdaptiveConfidence = 0.5,
+    ThreatMap = {},
+    WeaponType = "knife",
+}
 
-local __WAIT_COLOR = ColorSequence.new({
-    ColorSequenceKeypoint.new(0,   __PCLR(0.827451, 0.133333, 0.133333)),
-    ColorSequenceKeypoint.new(0.6, __PCLR(0.509804, 0.231373, 0.231373)),
-    ColorSequenceKeypoint.new(1,   __PCLR(0.501961, 0.501961, 0.501961))
-})
-
-local muteButtonSounds = false
-
-local function bind_safecallback(callback)
-    if not callback then return end
-    local ok, err = xpcall(callback, function(e) return debug.traceback(e) end)
-    if not ok then warn("[BIND ERROR] " .. tostring(err)) end
+-- ====== ФУНКЦИИ ======
+local function GetRoot(p)
+    if not p then return nil end
+    local c = p.Character
+    if not c then return nil end
+    return c:FindFirstChild("HumanoidRootPart")
 end
 
-local function Bind_GetStorage()
-    local parent = gethui and gethui()
-    if not parent or typeof(parent) ~= "Instance" then parent = CoreGui end
-    if not parent or typeof(parent) ~= "Instance" then
-        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui", 5)
+local function UpdateCache()
+    local c = LocalPlayer.Character
+    if c then
+        State.MyChar = c
+        State.MyRoot = c:FindFirstChild("HumanoidRootPart")
+        for _, item in ipairs(c:GetChildren()) do
+            if item:IsA("Tool") then
+                local n = item.Name:lower()
+                if n:find("knife") or n:find("blade") then State.WeaponType = "knife"
+                elseif n:find("gun") or n:find("pistol") or n:find("revolver") then State.WeaponType = "gun"
+                else State.WeaponType = "knife" end
+                break
+            end
+        end
+    else
+        State.MyChar = nil
+        State.MyRoot = nil
     end
-    if typeof(parent) ~= "Instance" then
-        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui")
-    end
-
-    local sg = parent:FindFirstChild("@bindstorage")
-    if not sg then
-        sg = Instance.new("ScreenGui")
-        sg.Name = "@bindstorage"
-        sg.ResetOnSpawn = false
-        sg.IgnoreGuiInset = true
-        pcall(function() sg.ScreenInsets = Enum.ScreenInsets.None end)
-        sg.Parent = parent
-    end
-    return sg
 end
 
-local function Bind_MakeDraggable(gui, maid, ripple, sound, clickFunc)
-    local dragging, dragInput, dragStart, startPos
-    local hasMoved = false
-    
-    maid:GiveTask(gui.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging, dragStart, startPos = true, input.Position, gui.Position
-            hasMoved = false
-            sound:Play()
-            local absPos = gui.AbsolutePosition
-            ripple.Position = __UD2(0, input.Position.X - absPos.X, 0, input.Position.Y - absPos.Y)
-            ripple.Size = __UD2(0, 0, 0, 0)
-            ripple.BackgroundTransparency = 0.5
-            ripple.Visible = true
-            __TS:Create(ripple, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-                Size = __UD2(0, 45, 0, 45),
-                BackgroundTransparency = 1
-            }):Play()
-
-            local rel
-            rel = __UIS.InputEnded:Connect(function(endInput)
-                if endInput.UserInputType == input.UserInputType then
-                    dragging = false
-                    if not hasMoved then
-                        bind_safecallback(clickFunc)
-                    end
-                    rel:Disconnect()
+local function HasWeapon(p, types)
+    if not p or not p.Character then return false end
+    types = types or {"knife","blade","dagger","sword","gun","pistol","revolver"}
+    local function check(cont)
+        if not cont then return false end
+        for _, item in ipairs(cont:GetChildren()) do
+            if item:IsA("Tool") then
+                local n = item.Name:lower()
+                for _, t in ipairs(types) do
+                    if n:find(t) then return true end
                 end
-            end)
+            end
         end
-    end))
-    
-    maid:GiveTask(gui.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end))
-    
-    maid:GiveTask(__UIS.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            if delta.Magnitude > 7 then hasMoved = true end
-            local screen = gui.Parent.AbsoluteSize
-            gui.Position = __UD2(startPos.X.Scale + (delta.X / screen.X), 0, startPos.Y.Scale + (delta.Y / screen.Y), 0)
-        end
-    end))
-end
-
-function BindableButtons.AddBButton(id, text, clickFunc, isGold)
-    if BindableButtons.Buttons[id] then return end
-    
-    local buttonMaid = Maid.new()
-    local camera = workspace.CurrentCamera
-    local screen = camera.ViewportSize
-    local buttonSizeY = 0.11
-    local widthScale = buttonSizeY * (screen.Y / screen.X)
-    local xPos = 0.1 + ((BindableButtons.Count % 8) * (widthScale + 0.005))
-    local yPos = 0.9 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
-
-    local ImageButton = Instance.new("ImageButton")
-    ImageButton.Name = id
-    ImageButton.Size = __UD2(widthScale, 0, buttonSizeY, 0)
-    ImageButton.Position = __UD2(xPos, 0, yPos, 0)
-    ImageButton.AnchorPoint = __V2(0.5, 0.5)
-    ImageButton.Image = __SHAPES[0]
-    ImageButton.BackgroundTransparency = 1
-    ImageButton.BorderSizePixel = 0
-    ImageButton.ClipsDescendants = false
-    ImageButton.AutoButtonColor = false
-    ImageButton.Parent = Bind_GetStorage()
-    buttonMaid:GiveTask(ImageButton)
-
-    local TextLabel = Instance.new("TextLabel", ImageButton)
-    TextLabel.Name = "@Text"
-    TextLabel.Size = __UD2(0.8, 0, 0.8, 0)
-    TextLabel.Position = __UD2(0.5, 0, 0.5, 0)
-    TextLabel.AnchorPoint = __V2(0.5, 0.5)
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.Font = Enum.Font.Jura
-    TextLabel.Text = text
-    TextLabel.TextColor3 = __PCLR(1, 1, 1)
-    TextLabel.TextSize = 10
-    TextLabel.TextWrapped = true
-    TextLabel.ZIndex = 3
-
-    local Aspect = Instance.new("UIAspectRatioConstraint", ImageButton)
-    Aspect.AspectRatio = 1
-    Aspect.AspectType = Enum.AspectType.ScaleWithParentSize
-
-    local Stroke = Instance.new("UIGradient", ImageButton)
-    Stroke.Name = "@Stroke"
-    Stroke.Color = __NORMAL_COLOR
-
-    local ripple = Instance.new("Frame")
-    ripple.Name = "@ripple"
-    ripple.BackgroundColor3 = __RGB(0, 155, 255)
-    ripple.BackgroundTransparency = 0.5
-    ripple.Size = __UD2(0, 0, 0, 0)
-    ripple.AnchorPoint = __V2(0.5, 0.5)
-    ripple.Visible = false
-    ripple.ZIndex = 2
-    ripple.Parent = ImageButton
-    Instance.new("UICorner", ripple).CornerRadius = __UD(1, 0)
-
-    local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://3868133279"
-    sound.Volume = muteButtonSounds and 0 or 0.5
-    sound.Parent = ImageButton
-
-    Bind_MakeDraggable(ImageButton, buttonMaid, ripple, sound, clickFunc)
-    buttonMaid:GiveTask(__RS.RenderStepped:Connect(function()
-        Stroke.Rotation = (Stroke.Rotation + 1) % 360
-    end))
-
-    BindableButtons.Buttons[id] = ImageButton
-    BindableButtons.Maids[id] = buttonMaid
-    BindableButtons.Count = BindableButtons.Count + 1
-    return ImageButton
-end
-
-function BindableButtons.DeleteBButton(id)
-    if BindableButtons.Maids[id] then
-        BindableButtons.Maids[id]:Destroy()
-        BindableButtons.Maids[id] = nil
-        BindableButtons.Buttons[id] = nil
+        return false
     end
+    return check(p.Character) or check(p:FindFirstChild("Backpack"))
 end
 
-function BindableButtons.UpdateBButtonText(id, text, isWaiting, isGold)
-    local btn = BindableButtons.Buttons[id]
-    if not btn then return end
-    
-    local textLabel = btn:FindFirstChild("@Text")
-    if textLabel then
-        textLabel.Text = text
-    end
-    
-    local stroke = btn:FindFirstChild("@Stroke")
-    if stroke then
-        if isWaiting then
-            stroke.Color = __WAIT_COLOR
-        else
-            stroke.Color = __ACTIVE_COLOR
-        end
-    end
-end
-
--- ==============================================
--- НАСТРОЙКИ AIMLOCK
--- ==============================================
-local AimLockEnabled = false
-local TargetPart = "HumanoidRootPart"
-local TargetPlayer = nil
-local WallCheckEnabled = false          -- [FIX] по умолчанию выключен (для надёжности)
-local ShowBindableButton = true
-local bindButtonSize = 0.11
-local PredictionLevel = 0.2             -- [FIX] High по умолчанию (0.2)
-
-local LastSearchTime = 0
-local LastWallCheckTime = 0
-local IsTargetVisibleCache = false
-local WALL_CHECK_INTERVAL = 0.15 
-
--- [FIX] ДОБАВЛЕНО: таймаут невидимости для удержания цели
-local InvisibleTimer = 0
-local MAX_INVISIBLE_TIME = 0.5           -- секунд, цель держится даже при краткой потере
-
-local MurdererWeapons = {
-    "knife", "blade", "dagger", "saw", "slasher", "axe", 
-    "scythe", "peppermint", "cookie", "edge", "batwing", 
-    "icewing", "bone", "hallow", "vampire", "cutter"
-}
-
--- ==============================================
--- ФУНКЦИИ ПОИСКА И ВИДИМОСТИ
--- ==============================================
-function IsVisible(target)
-    if not target or not target.Character then return false end
-    local p = target.Character:FindFirstChild(TargetPart)
+local function IsMurderer(p)
     if not p then return false end
-    
-    local CurrentCamera = workspace.CurrentCamera
-    if not CurrentCamera then return false end
-    
-    local raycastParams = RaycastParams.new()
-    local filterList = {}
-    if LocalPlayer.Character then 
-        table.insert(filterList, LocalPlayer.Character) 
-    end
-    
-    raycastParams.FilterDescendantsInstances = filterList
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    
-    local direction = p.Position - CurrentCamera.CFrame.Position
-    local result = workspace:Raycast(
-        CurrentCamera.CFrame.Position, direction, raycastParams
-    )
-    
-    if not result then return true end
-    return result.Instance:IsDescendantOf(target.Character)
-end
-
-function CheckForKnife(container)
-    if not container then return false end
-    for _, item in ipairs(container:GetChildren()) do
-        if item:IsA("Tool") then
-            local name = item.Name:lower()
-            local isServer = item:FindFirstChild("KnifeServer")
-            local isClient = item:FindFirstChild("KnifeClient")
-            
-            if name == "knife" or isServer or isClient then
-                return true
-            end
-            
-            for _, weaponName in ipairs(MurdererWeapons) do
-                if name:find(weaponName) then
-                    return true
-                end
-            end
-        end
-    end
+    if p:GetAttribute("Murderer") == true or p:GetAttribute("isMurderer") == true then return true end
+    if HasWeapon(p) then return true end
+    local c = p.Character
+    if c and (c:FindFirstChild("Knife") or c:FindFirstChild("Blade") or c:FindFirstChild("Gun")) then return true end
     return false
 end
 
--- [FIX] Изменено: добавлен приоритет для предыдущей цели
-function FindMurderer(preferTarget)
-    -- Сначала проверяем, жив ли предпочтительный (предыдущий) убийца
-    if preferTarget and preferTarget.Character then
-        local hum = preferTarget.Character:FindFirstChild("Humanoid")
-        if hum and hum.Health > 0 then
-            -- Даже если оружие не найдено – доверяем, чтобы не терять цель
-            return preferTarget
-        end
-    end
+local function IsSheriff(p)
+    if not p then return false end
+    if p:GetAttribute("Sheriff") == true or p:GetAttribute("isSheriff") == true then return true end
+    return HasWeapon(p, {"gun","pistol","revolver"}) and not IsMurderer(p)
+end
 
+local function SmoothPing(raw)
+    local hist = State.PingHistory
+    table_insert(hist, raw)
+    if #hist > 15 then table_remove(hist, 1) end
+    local sum = 0
+    for _, v in ipairs(hist) do sum = sum + v end
+    State.PingSmooth = sum / #hist
+    return State.PingSmooth
+end
+
+local function AdaptiveCorrection(error)
+    if not State.Settings.adaptiveLead then return end
+    local hist = State.ErrorHistory
+    table_insert(hist, error)
+    if #hist > 30 then table_remove(hist, 1) end
+    if #hist >= 10 then
+        local avg = Vector3_new(0,0,0)
+        for _, e in ipairs(hist) do avg = avg + e end
+        avg = avg / #hist
+        local gain = State.Settings.adaptiveGain * State.AdaptiveConfidence
+        State.AdaptiveOffset.x = State.AdaptiveOffset.x + avg.X * gain
+        State.AdaptiveOffset.y = State.AdaptiveOffset.y + avg.Y * gain
+        State.AdaptiveOffset.z = State.AdaptiveOffset.z + avg.Z * gain
+        local maxOff = State.Settings.maxAdaptiveOffset
+        State.AdaptiveOffset.x = math_clamp(State.AdaptiveOffset.x, -maxOff, maxOff)
+        State.AdaptiveOffset.y = math_clamp(State.AdaptiveOffset.y, -maxOff, maxOff)
+        State.AdaptiveOffset.z = math_clamp(State.AdaptiveOffset.z, -maxOff, maxOff)
+        State.ErrorHistory = {}
+    end
+end
+
+local function BuildThreatMap()
+    local myRoot = State.MyRoot
+    if not myRoot then return end
+    local myPos = myRoot.Position
+    State.ThreatMap = {}
     for _, pl in ipairs(Players:GetPlayers()) do
-        if pl ~= LocalPlayer and pl.Character then
-            local hum = pl.Character:FindFirstChild("Humanoid")
-            if hum and hum.Health > 0 then
-                local inChar = CheckForKnife(pl.Character)
-                local inPack = CheckForKnife(pl:FindFirstChild("Backpack"))
-                
-                if inChar or inPack then
-                    if not WallCheckEnabled or IsVisible(pl) then
-                        return pl
-                    end
-                end
+        if pl ~= LocalPlayer then
+            local root = GetRoot(pl)
+            if root then
+                local pos = root.Position
+                local dist = (pos - myPos).Magnitude
+                if dist > MAX_THREAT_DISTANCE then dist = MAX_THREAT_DISTANCE end
+                local vel = root.AssemblyLinearVelocity
+                local speed = vel.Magnitude
+                local threat = 0
+                if IsMurderer(pl) then threat = threat + 100
+                elseif IsSheriff(pl) then threat = threat + 30 end
+                threat = threat + (1 / (dist + 1)) * 50
+                threat = threat + speed * 2
+                local look = root.CFrame.LookVector
+                local dirToUs = (myPos - pos).Unit
+                local facing = look:Dot(dirToUs)
+                if facing > 0.5 then threat = threat + 20 end
+                local hum = pl.Character and pl.Character:FindFirstChild("Humanoid")
+                if hum and hum.Health < 30 then threat = threat * 1.3 end
+                State.ThreatMap[pl] = threat
             end
         end
     end
-    return nil
 end
 
--- ==============================================
--- ОСНОВНОЙ ЦИКЛ AIMLOCK
--- ==============================================
-local function AimLockLoop(deltaTime)
-    if not AimLockEnabled then return end
-    
-    local CurrentCamera = workspace.CurrentCamera 
-    if not CurrentCamera then return end
-
-    local valid = false
-    if TargetPlayer and TargetPlayer.Character then
-        local hum = TargetPlayer.Character:FindFirstChild("Humanoid")
-        if hum and hum.Health > 0 then
-            valid = true
+local function FindBestTarget()
+    local now = os_clock()
+    if State.Settings.targetLock and State.Target and State.Target.Parent == Players then
+        local c = State.Target.Character
+        if c and c:FindFirstChild("Humanoid") and c.Humanoid.Health > 0 and (now - State.TargetLockTime < State.Settings.lockTime) then
+            if IsMurderer(State.Target) then return State.Target end
         end
     end
-    
-    -- [FIX] Модификация WallCheck с таймаутом невидимости
-    if WallCheckEnabled and valid then
-        local currentTime = os.clock()
-        if currentTime - LastWallCheckTime > WALL_CHECK_INTERVAL then
-            IsTargetVisibleCache = IsVisible(TargetPlayer)
-            LastWallCheckTime = currentTime
-        end
-        if not IsTargetVisibleCache then
-            InvisibleTimer = InvisibleTimer + deltaTime
-            if InvisibleTimer > MAX_INVISIBLE_TIME then
-                valid = false   -- сбрасываем только после таймаута
+    if now - State.LastCheck < 0.5 then return State.Target end
+    State.LastCheck = now
+
+    BuildThreatMap()
+    local myRoot = State.MyRoot
+    if not myRoot then return nil end
+
+    local best = nil
+    local bestScore = -math.huge
+    for pl, threat in pairs(State.ThreatMap) do
+        if pl ~= LocalPlayer then
+            if IsMurderer(pl) then threat = threat * 1.5 end
+            if threat > bestScore then
+                bestScore = threat
+                best = pl
             end
-        else
-            InvisibleTimer = 0   -- сброс при восстановлении
         end
+    end
+
+    State.Target = best
+    if best then State.TargetLockTime = now end
+    return best
+end
+
+local function SmoothData(root)
+    if not root then return nil, nil end
+    local pos = root.Position
+    local vel = root.AssemblyLinearVelocity
+
+    local ph = State.TargetPosHistory
+    local vh = State.TargetVelHistory
+    table_insert(ph, pos)
+    table_insert(vh, vel)
+    if #ph > MAX_HISTORY then table_remove(ph, 1) end
+    if #vh > MAX_HISTORY then table_remove(vh, 1) end
+
+    local avgP = Vector3_new(0,0,0)
+    local avgV = Vector3_new(0,0,0)
+    for i = 1, #ph do
+        avgP = avgP + ph[i]
+        avgV = avgV + vh[i]
+    end
+    avgP = avgP / #ph
+    avgV = avgV / #vh
+    State.SmoothPos = avgP
+    State.SmoothVel = avgV
+    return avgP, avgV
+end
+
+local function CalculateLead(smoothPos, smoothVel, myPos, ping, dist)
+    local bulletTime = dist / BULLET_SPEED
+    if State.WeaponType == "gun" then bulletTime = dist / 3000 end
+    local totalTime = bulletTime + ping / 1000 + State.Settings.reactionTime
+    local vel = smoothVel
+    if State.Settings.useDrag then
+        local drag = 0.98 ^ (totalTime * 10)
+        vel = vel * drag
+    end
+    local predictedPos = smoothPos + vel * totalTime
+    if State.Settings.useGravity then
+        predictedPos = predictedPos + Vector3_new(0, -0.5 * GRAVITY * totalTime * totalTime, 0)
+    end
+    return predictedPos - smoothPos
+end
+
+local function ApplyGPL(sim, interval, x, y, z, h, v)
+    local last = State.LastApplied
+    if math_abs(last.H-h) < 2 and math_abs(last.V-v) < 2 and
+       math_abs(last.Sim-sim) < 2 and math_abs(last.Int-interval) < 2 and
+       last.X == x and last.Y == y and last.Z == z then return end
+    last.H,last.V,last.Sim,last.Int,last.X,last.Y,last.Z = h,v,sim,interval,x,y,z
+
+    if gpl_preset[4] then gpl_preset[4](sim) end
+    if gpl_preset[5] then gpl_preset[5](interval) end
+    if gpl_preset[6] then gpl_preset[6](x) end
+    if gpl_preset[7] then gpl_preset[7](y) end
+    if gpl_preset[8] then gpl_preset[8](z) end
+    if gpl_preset[9] then gpl_preset[9](h) end
+    if gpl_preset[10] then gpl_preset[10](v) end
+end
+
+local function InitBase()
+    if not internal_shared["RevertSettings_PrioritizeYourPing"] and gpl_preset[1] then gpl_preset[1]() end
+    if not internal_shared["RevertSettings_PredictJump"] and gpl_preset[2] then gpl_preset[2]() end
+    if not internal_shared["RevertSettings_PredictLag"] and gpl_preset[3] then gpl_preset[3]() end
+end
+
+local function Optimize()
+    local now = os_clock()
+    if now - State.LastGC > 30 then
+        State.LastGC = now
+        collectgarbage("collect")
+    end
+end
+
+-- ====== ИНТЕРФЕЙС ======
+section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+section:AddLabel(string.format("⚡⚡⚡ ULTRA INSTINCT %s ⚡⚡⚡", VERSION))
+section:AddLabel("🏆 5 УЛЬТРА-РЕЖИМОВ: PRO | INSTINCT | SECRETIVE | ANNIHILATING | ADAPTIVE")
+section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+local toggle = section:AddToggle("⚡ АКТИВИРОВАТЬ", function(state)
+    State.Enabled = state
+    if state then
+        InitBase()
+        UpdateCache()
+        State.Target = nil
+        print("[Ultra Instinct] Включён")
     else
-        InvisibleTimer = 0
+        State.Target = nil
+        collectgarbage("collect")
+        print("[Ultra Instinct] Выключен")
     end
-    
-    -- [FIX] Поиск каждые 0.1 сек (было 0.3) + передаём старую цель
-    if not valid then 
-        local currentTime = os.clock()
-        if currentTime - LastSearchTime > 0.1 then
-            TargetPlayer = FindMurderer(TargetPlayer)   -- пытаемся сохранить ту же цель
-            LastSearchTime = currentTime
+end)
+
+local modeNames = {"PRO", "INSTINCT", "SECRETIVE", "ANNIHILATING", "ADAPTIVE"}
+local modeKeys = {"PRO", "INSTINCT", "SECRETIVE", "ANNIHILATING", "ADAPTIVE"}
+section:AddLabel("Выберите ультра-режим:")
+local modeDropdown = section:AddDropdown("Режим", modeNames, function(selected)
+    for i, name in ipairs(modeNames) do
+        if name == selected then
+            State.CurrentMode = modeKeys[i]
+            print("[Ultra Instinct] Режим: " .. name)
+            break
         end
     end
-    
-    if TargetPlayer and TargetPlayer.Character then
-        local targetNode = TargetPlayer.Character:FindFirstChild(TargetPart)
-        
-        if targetNode then
-            local vel = targetNode.AssemblyLinearVelocity or Vector3.new()
-            local predVector = Vector3.new(vel.X, vel.Y * 0.3, vel.Z)
-            local predictedPos = targetNode.Position + (predVector * PredictionLevel)
-            
-            CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, predictedPos)
+end)
+
+section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+section:AddLabel("🧪 ФИЗИКА И ПРЕДСКАЗАНИЕ")
+local gravToggle = section:AddToggle("Учёт гравитации", function(state)
+    State.Settings.useGravity = state
+end)
+gravToggle(true)
+
+local dragToggle = section:AddToggle("Учёт сопротивления", function(state)
+    State.Settings.useDrag = state
+end)
+dragToggle(true)
+
+local jumpToggle = section:AddToggle("Предсказание прыжков", function(state)
+    State.Settings.predictJump = state
+end)
+jumpToggle(true)
+
+section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+section:AddLabel("📊 СТАТИСТИКА (в консоли F9)")
+
+section:AddButton("Показать статистику", function()
+    local s = State.Stats
+    local acc = s.Shots > 0 and string.format("%.1f%%", (s.Hits/s.Shots)*100) or "0%"
+    local time = os_clock() - s.StartTime
+    print("═══════════════════════════════════════════════════════════")
+    print("  📊 СТАТИСТИКА ULTRA INSTINCT")
+    print("  Выстрелов: " .. s.Shots)
+    print("  Попаданий: " .. s.Hits)
+    print("  Промахов: " .. s.Misses)
+    print("  Точность: " .. acc)
+    print("  Урон: " .. s.TotalDamage)
+    print("  Убийств: " .. s.Kills)
+    print("  Смертей: " .. s.Deaths)
+    print("  Серия: " .. s.CurrentStreak .. " (рекорд: " .. s.BestStreak .. ")")
+    print("  Время работы: " .. string.format("%.1f сек", time))
+    print("  Текущий режим: " .. State.CurrentMode)
+    print("═══════════════════════════════════════════════════════════")
+end)
+
+section:AddButton("Сбросить статистику", function()
+    State.Stats.Shots = 0
+    State.Stats.Hits = 0
+    State.Stats.Misses = 0
+    State.Stats.TotalDamage = 0
+    State.Stats.Kills = 0
+    State.Stats.Deaths = 0
+    State.Stats.Accuracy = 0
+    State.Stats.BestStreak = 0
+    State.Stats.CurrentStreak = 0
+    State.Stats.StartTime = os_time()
+    print("[Ultra Instinct] Статистика сброшена")
+end)
+
+section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+section:AddLabel("СТАТУС: информация в консоли (F9)")
+section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+-- ====== ОСНОВНОЙ ЦИКЛ ======
+RunService.Heartbeat:Connect(function()
+    if not State.Enabled then return end
+    Optimize()
+
+    if not State.MyRoot or not State.MyRoot.Parent then
+        UpdateCache()
+        if not State.MyRoot then return end
+    end
+
+    local target = FindBestTarget()
+    if not target then
+        State.Target = nil
+        return end
+
+    local mRoot = GetRoot(target)
+    if not mRoot then return end
+
+    local myRoot = State.MyRoot
+    local myPos = myRoot.Position
+    local mPos = mRoot.Position
+    local dist = (mPos - myPos).Magnitude
+
+    if dist < State.Settings.minDistance or dist > State.Settings.maxDistance then
+        State.Target = nil
+        return end
+
+    local smoothPos, smoothVel = SmoothData(mRoot)
+    if not smoothPos then return end
+
+    local rawPing = LocalPlayer:GetNetworkPing() * 1000
+    if rawPing <= 0 then rawPing = State.PingSmooth or 60 end
+    local ping = SmoothPing(rawPing)
+
+    local delta = CalculateLead(smoothPos, smoothVel, myPos, ping, dist)
+    local leadX = math_clamp(delta.X * 0.02, -6, 6)
+    local leadY = math_clamp(delta.Y * 0.02, -6, 6)
+    local leadZ = math_clamp(delta.Z * 0.02, -6, 6)
+
+    if State.Settings.adaptiveLead then
+        State.LastError = delta - State.LastError
+        AdaptiveCorrection(State.LastError)
+    end
+    local adapt = State.AdaptiveOffset
+
+    local modeKey = State.CurrentMode
+    local mode = MODES[modeKey]
+    if not mode then mode = MODES.ADAPTIVE end
+
+    if modeKey == "ADAPTIVE" and mode.auto_switch then
+        if dist < 30 then mode = ADAPTIVE_SUBS.CLOSE
+        elseif dist < 80 then mode = ADAPTIVE_SUBS.MID
+        elseif dist < 150 then mode = ADAPTIVE_SUBS.SNIPER
+        else mode = ADAPTIVE_SUBS.DEF end
+    end
+
+    local mult = State.Settings.leadMultiplier
+    local vertCorr = State.Settings.verticalCorrection
+    local speed = smoothVel.Magnitude
+
+    local hLead = (mode.h_base + ping * mode.h_ping + speed * mode.h_speed + leadX * 2) * mult + adapt.x * 3
+    hLead = math_clamp(hLead, 80, 500)
+
+    local vLead = (mode.v_base + ping * mode.v_ping + dist * mode.v_dist + leadY * 2) * vertCorr + adapt.y * 3
+    vLead = math_clamp(vLead, 80, 450)
+
+    local yOff = 0
+    local vertSpeed = smoothVel.Y
+    if State.Settings.predictJump then
+        if vertSpeed > 3 then
+            vLead = vLead + 35
+            yOff = yOff + 3
+        elseif vertSpeed < -8 then
+            vLead = vLead - 25
+            yOff = yOff - 4
         end
     end
-end
 
--- ==============================================
--- СОЗДАНИЕ КНОПКИ (BIND)
--- ==============================================
-local function UpdateAimButtonState()
-    local btn = BindableButtons.Buttons["aim_toggle"]
-    if not btn then return end
-    local textLabel = btn:FindFirstChild("@Text")
-    if textLabel then
-        textLabel.Text = AimLockEnabled and "ON" or "OFF"
-    end
-    local stroke = btn:FindFirstChild("@Stroke")
-    if stroke then
-        if AimLockEnabled then
-            stroke.Color = __ACTIVE_COLOR
-        else
-            stroke.Color = __NORMAL_COLOR
-        end
-    end
-end
+    local sim = mode.sim_base + speed * mode.sim_speed + math_abs(leadX) * 0.5 + math_abs(adapt.x) * 0.2
+    sim = math_clamp(sim, 15, 130)
 
-local function ToggleAimLock()
-    AimLockEnabled = not AimLockEnabled
-    if AimLockEnabled then 
-        TargetPlayer = FindMurderer(nil) 
-    else 
-        TargetPlayer = nil 
-    end
-    UpdateAimButtonState()
-end
+    local interval = mode.int_base + speed * mode.int_speed - math_abs(leadX) * 0.3 - math_abs(adapt.x) * 0.1
+    interval = math_clamp(interval, 5, 120)
 
-local function CreateBindButton()
-    if BindableButtons.Buttons["aim_toggle"] then return end
-    
-    BindableButtons.AddBButton("aim_toggle", "Aim", function()
-        ToggleAimLock()
-    end, false)
-    
-    local btn = BindableButtons.Buttons["aim_toggle"]
-    if btn then
-        local screen = Workspace.CurrentCamera.ViewportSize
-        btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
-    end
-    
-    UpdateAimButtonState()
-end
+    local offX = mode.offX + leadX * 0.5 + adapt.x
+    local offY = mode.offY + leadY * 0.5 + yOff + adapt.y
+    local offZ = mode.offZ + leadZ * 0.5 + adapt.z
 
-local function DeleteBindButton()
-    BindableButtons.DeleteBButton("aim_toggle")
-end
-
-local function ToggleBindableVisibility()
-    local btn = BindableButtons.Buttons["aim_toggle"]
-    if btn then
-        btn.Visible = ShowBindableButton
-    end
-end
-
--- ==============================================
--- МЕНЮ
--- ==============================================
-my_section:AddLabel("👑 Developer: @anya_bts | Premium Edition")
-my_section:AddParagraph("🎯 Status & Info", "Mode: ABSOLUTE HARD LOCK\nZero Delay & Zero Smoothing.")
-
-my_section:AddToggle("🎯 Enable Aim Lock", function(b)
-    AimLockEnabled = b
-    if not b then TargetPlayer = nil end
-    UpdateAimButtonState()
-    if AimLockEnabled then TargetPlayer = FindMurderer(nil) end
+    ApplyGPL(
+        math_floor(sim), math_floor(interval),
+        math_floor(offX), math_floor(offY), math_floor(offZ),
+        math_floor(hLead), math_floor(vLead)
+    )
 end)
 
-my_section:AddToggle("📱 Show Screen Button", function(b)
-    ShowBindableButton = b
-    ToggleBindableVisibility()
-end)
-
-my_section:AddSlider("🔘 Button Size (%)", 5, 25, 11, function(value)
-    bindButtonSize = value / 100
-    local btn = BindableButtons.Buttons["aim_toggle"]
-    if btn then
-        local screen = Workspace.CurrentCamera.ViewportSize
-        btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
+Players.PlayerRemoving:Connect(function(player)
+    if State.Target == player then
+        State.Target = nil
+        State.TargetLockTime = 0
     end
+    State.ThreatMap[player] = nil
 end)
 
-my_section:AddToggle("🧱 Wall Check (Raycast)", function(b)
-    WallCheckEnabled = b
-    shared.Notify("🧱 Wall Check: "..(b and "ENABLED" or "DISABLED"), 2)
-end)
-
-my_section:AddDropdown("🎯 Target Body Part", 
-    {"Head (Critical)", "Torso (Safe Root)"}, 
-    function(s) 
-        if s:find("Head") then TargetPart = "Head"
-        else TargetPart = "HumanoidRootPart" end
-    end
-)
-
-my_section:AddDropdown("⚡ Prediction Level", 
-    {"Low (0.08)", "Medium (0.145)", "High (0.20) ★", "Disabled"}, 
-    function(s)
-        if s:find("Low") then PredictionLevel = 0.08
-        elseif s:find("Medium") then PredictionLevel = 0.145
-        elseif s:find("High") then PredictionLevel = 0.2
-        else PredictionLevel = 0 end
-    end
-)
-
-my_section:AddKeybind("⌨️ Quick Toggle Key", "T", function()
-    ToggleAimLock()
-end)
-
--- ==============================================
--- ЗАПУСК КНОПКИ ПРИ ЗАГРУЗКЕ
--- ==============================================
-CreateBindButton()
-ToggleBindableVisibility()
-
--- ==============================================
--- ПРИВЯЗКА AIMLOCK К RENDERSTEP
--- ==============================================
-RunService:BindToRenderStep(
-    "MM2_AimLock_PhaseSync", 
-    Enum.RenderPriority.Camera.Value + 1, 
-    AimLockLoop
-)
-
--- Очистка при смене персонажа
 LocalPlayer.CharacterAdded:Connect(function()
-    TargetPlayer = nil
+    UpdateCache()
+    State.Target = nil
+    State.TargetLockTime = 0
+    State.LastCheck = 0
+    State.TargetPosHistory = {}
+    State.TargetVelHistory = {}
+    State.SmoothPos = nil
+    State.SmoothVel = nil
 end)
 
--- Очистка при выгрузке плагина
-RootMaid:GiveTask(function()
-    DeleteBindButton()
-    RunService:UnbindFromRenderStep("MM2_AimLock_PhaseSync")
-end)
-
-shared.Notify("MM2 Aim Lock V2.6 + Bind Button Loaded!", 3)
-print("MM2 Aim Lock V2.6 with normal bind button loaded!")
+UpdateCache()
+print("═══════════════════════════════════════════════════════════════════════════════════════")
+print("  ⚡⚡⚡ ULTRA INSTINCT " .. VERSION .. " ⚡⚡⚡")
+print("  🚀 5 УЛЬТРА-РЕЖИМОВ: PRO | INSTINCT | SECRETIVE | ANNIHILATING | ADAPTIVE")
+print("  📌 Статус и статистика в консоли (F9)")
+print("═══════════════════════════════════════════════════════════════════════════════════════")
