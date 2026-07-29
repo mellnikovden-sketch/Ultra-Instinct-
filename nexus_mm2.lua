@@ -1,428 +1,583 @@
--- =====================================================================================
--- 🔪 MM2 ULTIMATE SUITE V1.0 🔪
--- FULLY OPTIMIZED FOR MURDER MYSTERY 2
--- DEVELOPER: BETA | ABSOLUTE-02 | O.E.S-01
--- =====================================================================================
+-- MM2 Murderer Aim Lock V2.6 (ABSOLUTE HARD LOCK) + BIND BUTTON
+-- [FIX] Мгновенное наведение и неотрывное удержание
+local shared = odh_shared_plugins
+local my_section = shared.AddSection("⚡ MM2 AIMLOCK | V2.6 HARD LOCK")
 
--- ==============================================
--- ЯДРО СИСТЕМЫ
--- ==============================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
 local LocalPlayer = Players.LocalPlayer
 
 -- ==============================================
--- КОНФИГУРАЦИЯ (ПОЛНОСТЬЮ НАСТРАИВАЕМАЯ)
+-- MAID (для очистки) + BINDABLE BUTTONS (из BJP.lua)
 -- ==============================================
-local Config = {
-    AimLock = {
-        Enabled = false,
-        TargetPart = "HumanoidRootPart", -- "Head" для критических
-        PredictionLevel = 0.15,
-        MinDistance = 3,
-        MaxDistance = 350,
-        AutoSwitch = true,
-        WallCheck = false,
-        Smoothness = 0, -- 0 = мгновенно, 1 = плавно
-        Priority = "distance" -- distance, health, balanced
-    },
-    AntiDetect = {
-        Enabled = true,
-        RandomDelay = false, -- имитация человеческой реакции
-        MissChance = 0.02, -- 2% шанс промаха (для натуральности)
-        Jitter = 0.5 -- микродрожание прицела
-    },
-    Roles = {
-        Murderer = true,
-        Sheriff = false,
-        Innocent = false
-    },
-    AutoUpdate = {
-        Enabled = true,
-        CheckInterval = 300 -- проверка каждые 5 минут
-    }
-}
+local Maid = {}
+Maid.__index = Maid
 
--- ==============================================
--- СИСТЕМА РАСПОЗНАВАНИЯ РОЛЕЙ (7 ПАРАМЕТРОВ)
--- ==============================================
-local RoleDetector = {
-    -- Параметр 1: Атрибуты игры
-    CheckAttributes = function(pl)
-        if pl:GetAttribute("Murderer") or pl:GetAttribute("isMurderer") then return "murderer" end
-        if pl:GetAttribute("Sheriff") or pl:GetAttribute("isSheriff") then return "sheriff" end
-        if pl:GetAttribute("Innocent") or pl:GetAttribute("isInnocent") then return "innocent" end
-        return nil
-    end,
+function Maid.new()
+    return setmetatable({_tasks = {}, _destroyed = false}, Maid)
+end
 
-    -- Параметр 2: Оружие в руках
-    CheckHands = function(pl)
-        if not pl.Character then return nil end
-        for _, item in ipairs(pl.Character:GetChildren()) do
-            if item:IsA("Tool") then
-                local name = item.Name:lower()
-                if name:find("knife") or name:find("blade") or name:find("dagger") then
-                    return "murderer"
-                end
-                if name:find("gun") or name:find("pistol") or name:find("revolver") then
-                    return "sheriff"
-                end
-            end
-        end
-        return nil
-    end,
+function Maid:GiveTask(task)
+    if self._destroyed then self:_cleanupTask(task) return end
+    table.insert(self._tasks, task)
+    return task
+end
 
-    -- Параметр 3: Оружие в инвентаре
-    CheckBackpack = function(pl)
-        local bp = pl:FindFirstChild("Backpack")
-        if not bp then return nil end
-        for _, item in ipairs(bp:GetChildren()) do
-            if item:IsA("Tool") then
-                local name = item.Name:lower()
-                if name:find("knife") or name:find("blade") or name:find("dagger") then
-                    return "murderer"
-                end
-                if name:find("gun") or name:find("pistol") or name:find("revolver") then
-                    return "sheriff"
-                end
-            end
-        end
-        return nil
-    end,
+function Maid:GiveTasks(...)
+    for _, t in ipairs({...}) do self:GiveTask(t) end
+end
 
-    -- Параметр 4: Серверные объекты (KnifeServer/GunServer)
-    CheckServerObjects = function(pl)
-        if not pl.Character then return nil end
-        for _, item in ipairs(pl.Character:GetChildren()) do
-            if item:FindFirstChild("KnifeServer") then return "murderer" end
-            if item:FindFirstChild("GunServer") then return "sheriff" end
-        end
-        return nil
-    end,
-
-    -- Параметр 5: Анимации (определяет по позе/движению)
-    CheckAnimations = function(pl)
-        if not pl.Character then return nil end
-        local hum = pl.Character:FindFirstChild("Humanoid")
-        if not hum then return nil end
-        -- Убийцы часто бегают с ножом, шерифы с пистолетом
-        if hum.WalkSpeed > 20 then
-            -- Дополнительная проверка на оружие
-            for _, item in ipairs(pl.Character:GetChildren()) do
-                if item:IsA("Tool") and item.Name:lower():find("knife") then
-                    return "murderer"
-                end
-            end
-        end
-        return nil
-    end,
-
-    -- Параметр 6: Цвет имени (если отображается)
-    CheckNameColor = function(pl)
-        -- Не всегда доступно, но если есть
-        return nil
-    end,
-
-    -- Параметр 7: Поведение (агрессивность, преследование)
-    CheckBehavior = function(pl)
-        -- Визуальный анализатор поведения (упрощённо)
-        return nil
-    end,
-
-    -- Главная функция определения
-    GetRole = function(pl)
-        if not pl then return "unknown" end
-        
-        local methods = {
-            RoleDetector.CheckAttributes,
-            RoleDetector.CheckHands,
-            RoleDetector.CheckBackpack,
-            RoleDetector.CheckServerObjects,
-            RoleDetector.CheckAnimations,
-            RoleDetector.CheckNameColor,
-            RoleDetector.CheckBehavior
-        }
-        
-        for _, method in ipairs(methods) do
-            local role = method(pl)
-            if role then return role end
-        end
-        
-        return "innocent"
+function Maid:_cleanupTask(task)
+    local t = typeof(task)
+    if t == "RBXScriptConnection" then task:Disconnect()
+    elseif t == "Instance" then task:Destroy()
+    elseif t == "function" then task()
+    elseif t == "table" and type(task.Destroy) == "function" then task:Destroy()
     end
+end
+
+function Maid:DoCleaning()
+    if self._destroyed then return end
+    self._destroyed = true
+    for _, task in ipairs(self._tasks) do self:_cleanupTask(task) end
+    self._tasks = {}
+end
+
+function Maid:Destroy() self:DoCleaning() end
+
+local RootMaid = Maid.new()
+
+-- Вспомогательные функции для кнопок
+local function getfserv(s)
+    local ok, svc = pcall(function() return game:GetService(s) end)
+    if ok and svc then return svc end
+    ok, svc = pcall(function() return game:FindService(s) end)
+    if ok and svc then return svc end
+    return game[s]
+end
+
+local __RS   = getfserv("RunService")
+local __UIS  = getfserv("UserInputService")
+local __PLRS = getfserv("Players")
+local __TS   = getfserv("TweenService")
+
+local __UD2 = UDim2.new
+local __UD  = UDim.new
+local __V2  = Vector2.new
+local __PCLR = Color3.new
+local __RGB  = Color3.fromRGB
+
+-- Bindable Buttons
+local BindableButtons = {Buttons = {}, Maids = {}, Count = 0}
+
+local __SHAPES = {
+    [0] = "rbxassetid://86221076925479",
+    [1] = "rbxassetid://96242665417546",
+    [2] = "rbxassetid://97129189935336",
+    [3] = "rbxassetid://76165862027868",
+    [4] = "rbxassetid://125868092127496"
+}
+
+local __NORMAL_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.133333, 0.827451, 0.494118)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.231373, 0.509804, 0.498039)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.501961, 0.501961, 0.501961))
+})
+
+local __ACTIVE_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.0, 0.8, 0.4)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.0, 0.5, 0.3)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.2, 0.8, 0.6))
+})
+
+local __WAIT_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.827451, 0.133333, 0.133333)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.509804, 0.231373, 0.231373)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.501961, 0.501961, 0.501961))
+})
+
+local muteButtonSounds = false
+
+local function bind_safecallback(callback)
+    if not callback then return end
+    local ok, err = xpcall(callback, function(e) return debug.traceback(e) end)
+    if not ok then warn("[BIND ERROR] " .. tostring(err)) end
+end
+
+local function Bind_GetStorage()
+    local parent = gethui and gethui()
+    if not parent or typeof(parent) ~= "Instance" then parent = CoreGui end
+    if not parent or typeof(parent) ~= "Instance" then
+        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui", 5)
+    end
+    if typeof(parent) ~= "Instance" then
+        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    local sg = parent:FindFirstChild("@bindstorage")
+    if not sg then
+        sg = Instance.new("ScreenGui")
+        sg.Name = "@bindstorage"
+        sg.ResetOnSpawn = false
+        sg.IgnoreGuiInset = true
+        pcall(function() sg.ScreenInsets = Enum.ScreenInsets.None end)
+        sg.Parent = parent
+    end
+    return sg
+end
+
+local function Bind_MakeDraggable(gui, maid, ripple, sound, clickFunc)
+    local dragging, dragInput, dragStart, startPos
+    local hasMoved = false
+    
+    maid:GiveTask(gui.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging, dragStart, startPos = true, input.Position, gui.Position
+            hasMoved = false
+            sound:Play()
+            local absPos = gui.AbsolutePosition
+            ripple.Position = __UD2(0, input.Position.X - absPos.X, 0, input.Position.Y - absPos.Y)
+            ripple.Size = __UD2(0, 0, 0, 0)
+            ripple.BackgroundTransparency = 0.5
+            ripple.Visible = true
+            __TS:Create(ripple, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                Size = __UD2(0, 45, 0, 45),
+                BackgroundTransparency = 1
+            }):Play()
+
+            local rel
+            rel = __UIS.InputEnded:Connect(function(endInput)
+                if endInput.UserInputType == input.UserInputType then
+                    dragging = false
+                    if not hasMoved then
+                        bind_safecallback(clickFunc)
+                    end
+                    rel:Disconnect()
+                end
+            end)
+        end
+    end))
+    
+    maid:GiveTask(gui.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end))
+    
+    maid:GiveTask(__UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            if delta.Magnitude > 7 then hasMoved = true end
+            local screen = gui.Parent.AbsoluteSize
+            gui.Position = __UD2(startPos.X.Scale + (delta.X / screen.X), 0, startPos.Y.Scale + (delta.Y / screen.Y), 0)
+        end
+    end))
+end
+
+function BindableButtons.AddBButton(id, text, clickFunc, isGold)
+    if BindableButtons.Buttons[id] then return end
+    
+    local buttonMaid = Maid.new()
+    local camera = workspace.CurrentCamera
+    local screen = camera.ViewportSize
+    local buttonSizeY = 0.11
+    local widthScale = buttonSizeY * (screen.Y / screen.X)
+    local xPos = 0.1 + ((BindableButtons.Count % 8) * (widthScale + 0.005))
+    local yPos = 0.9 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
+
+    local ImageButton = Instance.new("ImageButton")
+    ImageButton.Name = id
+    ImageButton.Size = __UD2(widthScale, 0, buttonSizeY, 0)
+    ImageButton.Position = __UD2(xPos, 0, yPos, 0)
+    ImageButton.AnchorPoint = __V2(0.5, 0.5)
+    ImageButton.Image = __SHAPES[0]
+    ImageButton.BackgroundTransparency = 1
+    ImageButton.BorderSizePixel = 0
+    ImageButton.ClipsDescendants = false
+    ImageButton.AutoButtonColor = false
+    ImageButton.Parent = Bind_GetStorage()
+    buttonMaid:GiveTask(ImageButton)
+
+    local TextLabel = Instance.new("TextLabel", ImageButton)
+    TextLabel.Name = "@Text"
+    TextLabel.Size = __UD2(0.8, 0, 0.8, 0)
+    TextLabel.Position = __UD2(0.5, 0, 0.5, 0)
+    TextLabel.AnchorPoint = __V2(0.5, 0.5)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Font = Enum.Font.Jura
+    TextLabel.Text = text
+    TextLabel.TextColor3 = __PCLR(1, 1, 1)
+    TextLabel.TextSize = 10
+    TextLabel.TextWrapped = true
+    TextLabel.ZIndex = 3
+
+    local Aspect = Instance.new("UIAspectRatioConstraint", ImageButton)
+    Aspect.AspectRatio = 1
+    Aspect.AspectType = Enum.AspectType.ScaleWithParentSize
+
+    local Stroke = Instance.new("UIGradient", ImageButton)
+    Stroke.Name = "@Stroke"
+    Stroke.Color = __NORMAL_COLOR
+
+    local ripple = Instance.new("Frame")
+    ripple.Name = "@ripple"
+    ripple.BackgroundColor3 = __RGB(0, 155, 255)
+    ripple.BackgroundTransparency = 0.5
+    ripple.Size = __UD2(0, 0, 0, 0)
+    ripple.AnchorPoint = __V2(0.5, 0.5)
+    ripple.Visible = false
+    ripple.ZIndex = 2
+    ripple.Parent = ImageButton
+    Instance.new("UICorner", ripple).CornerRadius = __UD(1, 0)
+
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://3868133279"
+    sound.Volume = muteButtonSounds and 0 or 0.5
+    sound.Parent = ImageButton
+
+    Bind_MakeDraggable(ImageButton, buttonMaid, ripple, sound, clickFunc)
+    buttonMaid:GiveTask(__RS.RenderStepped:Connect(function()
+        Stroke.Rotation = (Stroke.Rotation + 1) % 360
+    end))
+
+    BindableButtons.Buttons[id] = ImageButton
+    BindableButtons.Maids[id] = buttonMaid
+    BindableButtons.Count = BindableButtons.Count + 1
+    return ImageButton
+end
+
+function BindableButtons.DeleteBButton(id)
+    if BindableButtons.Maids[id] then
+        BindableButtons.Maids[id]:Destroy()
+        BindableButtons.Maids[id] = nil
+        BindableButtons.Buttons[id] = nil
+    end
+end
+
+function BindableButtons.UpdateBButtonText(id, text, isWaiting, isGold)
+    local btn = BindableButtons.Buttons[id]
+    if not btn then return end
+    
+    local textLabel = btn:FindFirstChild("@Text")
+    if textLabel then
+        textLabel.Text = text
+    end
+    
+    local stroke = btn:FindFirstChild("@Stroke")
+    if stroke then
+        if isWaiting then
+            stroke.Color = __WAIT_COLOR
+        else
+            stroke.Color = __ACTIVE_COLOR
+        end
+    end
+end
+
+-- ==============================================
+-- НАСТРОЙКИ AIMLOCK
+-- ==============================================
+local AimLockEnabled = false
+local TargetPart = "HumanoidRootPart"
+local TargetPlayer = nil
+local WallCheckEnabled = false          -- [FIX] по умолчанию выключен (для надёжности)
+local ShowBindableButton = true
+local bindButtonSize = 0.11
+local PredictionLevel = 0.2             -- [FIX] High по умолчанию (0.2)
+
+local LastSearchTime = 0
+local LastWallCheckTime = 0
+local IsTargetVisibleCache = false
+local WALL_CHECK_INTERVAL = 0.15 
+
+-- [FIX] ДОБАВЛЕНО: таймаут невидимости для удержания цели
+local InvisibleTimer = 0
+local MAX_INVISIBLE_TIME = 0.5           -- секунд, цель держится даже при краткой потере
+
+local MurdererWeapons = {
+    "knife", "blade", "dagger", "saw", "slasher", "axe", 
+    "scythe", "peppermint", "cookie", "edge", "batwing", 
+    "icewing", "bone", "hallow", "vampire", "cutter"
 }
 
 -- ==============================================
--- ОСНОВНОЙ AIMLOCK (АДАПТИВНЫЙ)
+-- ФУНКЦИИ ПОИСКА И ВИДИМОСТИ
 -- ==============================================
-local AimLock = {
-    Target = nil,
-    LockedTarget = nil,
-    Enabled = false,
-    MissTimer = 0,
+function IsVisible(target)
+    if not target or not target.Character then return false end
+    local p = target.Character:FindFirstChild(TargetPart)
+    if not p then return false end
     
-    FindMurderer = function()
-        local bestScore = -1
-        local bestTarget = nil
-        
-        -- Проверка заблокированной цели
-        if AimLock.LockedTarget and AimLock.LockedTarget.Character then
-            local hum = AimLock.LockedTarget.Character:FindFirstChild("Humanoid")
-            if hum and hum.Health > 0 then
-                local role = RoleDetector.GetRole(AimLock.LockedTarget)
-                if role == "murderer" then
-                    return AimLock.LockedTarget
+    local CurrentCamera = workspace.CurrentCamera
+    if not CurrentCamera then return false end
+    
+    local raycastParams = RaycastParams.new()
+    local filterList = {}
+    if LocalPlayer.Character then 
+        table.insert(filterList, LocalPlayer.Character) 
+    end
+    
+    raycastParams.FilterDescendantsInstances = filterList
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local direction = p.Position - CurrentCamera.CFrame.Position
+    local result = workspace:Raycast(
+        CurrentCamera.CFrame.Position, direction, raycastParams
+    )
+    
+    if not result then return true end
+    return result.Instance:IsDescendantOf(target.Character)
+end
+
+function CheckForKnife(container)
+    if not container then return false end
+    for _, item in ipairs(container:GetChildren()) do
+        if item:IsA("Tool") then
+            local name = item.Name:lower()
+            local isServer = item:FindFirstChild("KnifeServer")
+            local isClient = item:FindFirstChild("KnifeClient")
+            
+            if name == "knife" or isServer or isClient then
+                return true
+            end
+            
+            for _, weaponName in ipairs(MurdererWeapons) do
+                if name:find(weaponName) then
+                    return true
                 end
             end
         end
-        
-        for _, pl in ipairs(Players:GetPlayers()) do
-            if pl ~= LocalPlayer and pl.Character then
-                local hum = pl.Character:FindFirstChild("Humanoid")
-                if hum and hum.Health > 0 then
-                    local role = RoleDetector.GetRole(pl)
-                    if role == "murderer" then
-                        local score = AimLock.CalculatePriority(pl)
-                        if score > bestScore then
-                            bestScore = score
-                            bestTarget = pl
-                        end
+    end
+    return false
+end
+
+-- [FIX] Изменено: добавлен приоритет для предыдущей цели
+function FindMurderer(preferTarget)
+    -- Сначала проверяем, жив ли предпочтительный (предыдущий) убийца
+    if preferTarget and preferTarget.Character then
+        local hum = preferTarget.Character:FindFirstChild("Humanoid")
+        if hum and hum.Health > 0 then
+            -- Даже если оружие не найдено – доверяем, чтобы не терять цель
+            return preferTarget
+        end
+    end
+
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer and pl.Character then
+            local hum = pl.Character:FindFirstChild("Humanoid")
+            if hum and hum.Health > 0 then
+                local inChar = CheckForKnife(pl.Character)
+                local inPack = CheckForKnife(pl:FindFirstChild("Backpack"))
+                
+                if inChar or inPack then
+                    if not WallCheckEnabled or IsVisible(pl) then
+                        return pl
                     end
                 end
             end
         end
-        
-        if bestTarget then
-            AimLock.LockedTarget = bestTarget
-        end
-        
-        return bestTarget
-    end,
+    end
+    return nil
+end
+
+-- ==============================================
+-- ОСНОВНОЙ ЦИКЛ AIMLOCK
+-- ==============================================
+local function AimLockLoop(deltaTime)
+    if not AimLockEnabled then return end
     
-    CalculatePriority = function(pl)
-        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not myRoot then return 0 end
-        
-        local targetRoot = pl.Character:FindFirstChild("HumanoidRootPart")
-        if not targetRoot then return 0 end
-        
-        local distance = (targetRoot.Position - myRoot.Position).Magnitude
-        local hum = pl.Character:FindFirstChild("Humanoid")
-        local health = hum and hum.Health or 100
-        
-        if Config.AimLock.Priority == "distance" then
-            return 1000 - distance
-        elseif Config.AimLock.Priority == "health" then
-            return (1 - health/100) * 500
+    local CurrentCamera = workspace.CurrentCamera 
+    if not CurrentCamera then return end
+
+    local valid = false
+    if TargetPlayer and TargetPlayer.Character then
+        local hum = TargetPlayer.Character:FindFirstChild("Humanoid")
+        if hum and hum.Health > 0 then
+            valid = true
+        end
+    end
+    
+    -- [FIX] Модификация WallCheck с таймаутом невидимости
+    if WallCheckEnabled and valid then
+        local currentTime = os.clock()
+        if currentTime - LastWallCheckTime > WALL_CHECK_INTERVAL then
+            IsTargetVisibleCache = IsVisible(TargetPlayer)
+            LastWallCheckTime = currentTime
+        end
+        if not IsTargetVisibleCache then
+            InvisibleTimer = InvisibleTimer + deltaTime
+            if InvisibleTimer > MAX_INVISIBLE_TIME then
+                valid = false   -- сбрасываем только после таймаута
+            end
         else
-            return (1000 - distance) * 0.7 + (1 - health/100) * 300
+            InvisibleTimer = 0   -- сброс при восстановлении
         end
-    end,
+    else
+        InvisibleTimer = 0
+    end
     
-    GetTargetPosition = function()
-        if not AimLock.Target or not AimLock.Target.Character then return nil end
-        local targetNode = AimLock.Target.Character:FindFirstChild(Config.AimLock.TargetPart)
-        if not targetNode then return nil end
-        
-        local vel = targetNode.AssemblyLinearVelocity or Vector3.new()
-        local predVector = Vector3.new(vel.X, vel.Y * 0.3, vel.Z)
-        return targetNode.Position + (predVector * Config.AimLock.PredictionLevel)
-    end,
+    -- [FIX] Поиск каждые 0.1 сек (было 0.3) + передаём старую цель
+    if not valid then 
+        local currentTime = os.clock()
+        if currentTime - LastSearchTime > 0.1 then
+            TargetPlayer = FindMurderer(TargetPlayer)   -- пытаемся сохранить ту же цель
+            LastSearchTime = currentTime
+        end
+    end
     
-    ShouldMiss = function()
-        if Config.AntiDetect.MissChance > 0 then
-            AimLock.MissTimer = AimLock.MissTimer + 1
-            if AimLock.MissTimer > 30 then
-                AimLock.MissTimer = 0
-                return math.random() < Config.AntiDetect.MissChance
-            end
+    if TargetPlayer and TargetPlayer.Character then
+        local targetNode = TargetPlayer.Character:FindFirstChild(TargetPart)
+        
+        if targetNode then
+            local vel = targetNode.AssemblyLinearVelocity or Vector3.new()
+            local predVector = Vector3.new(vel.X, vel.Y * 0.3, vel.Z)
+            local predictedPos = targetNode.Position + (predVector * PredictionLevel)
+            
+            CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, predictedPos)
         end
-        return false
-    end,
-    
-    Loop = function()
-        if not AimLock.Enabled then return end
-        
-        local CurrentCamera = workspace.CurrentCamera
-        if not CurrentCamera then return end
-        
-        -- Поиск цели
-        if not AimLock.Target or not AimLock.Target.Character then
-            AimLock.Target = AimLock.FindMurderer()
-            if not AimLock.Target then return end
-        end
-        
-        -- Проверка здоровья
-        local hum = AimLock.Target.Character:FindFirstChild("Humanoid")
-        if not hum or hum.Health <= 0 then
-            AimLock.Target = AimLock.FindMurderer()
-            if not AimLock.Target then return end
-        end
-        
-        -- Проверка роли
-        local role = RoleDetector.GetRole(AimLock.Target)
-        if role ~= "murderer" then
-            AimLock.Target = AimLock.FindMurderer()
-            if not AimLock.Target then return end
-        end
-        
-        -- Автопереключение
-        if Config.AimLock.AutoSwitch then
-            local newTarget = AimLock.FindMurderer()
-            if newTarget and newTarget ~= AimLock.Target then
-                local currentScore = AimLock.CalculatePriority(AimLock.Target)
-                local newScore = AimLock.CalculatePriority(newTarget)
-                if newScore > currentScore * 1.3 then
-                    AimLock.Target = newTarget
-                    AimLock.LockedTarget = newTarget
-                end
-            end
-        end
-        
-        -- Получение позиции цели
-        local targetPos = AimLock.GetTargetPosition()
-        if not targetPos then return end
-        
-        -- Проверка дистанции
-        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if myRoot then
-            local distance = (targetPos - myRoot.Position).Magnitude
-            if distance > Config.AimLock.MaxDistance then
-                AimLock.Target = AimLock.FindMurderer()
-                return
-            end
-        end
-        
-        -- Анти-детект: промах
-        if AimLock.ShouldMiss() then
-            local offset = Vector3.new(
-                math.random(-5, 5),
-                math.random(-5, 5),
-                math.random(-5, 5)
-            )
-            targetPos = targetPos + offset
-        end
-        
-        -- Наведение
-        if Config.AimLock.Smoothness > 0 then
-            -- Плавное наведение (для натуральности)
-            local currentCF = CurrentCamera.CFrame
-            local targetCF = CFrame.new(currentCF.Position, targetPos)
-            CurrentCamera.CFrame = currentCF:Lerp(targetCF, Config.AimLock.Smoothness)
+    end
+end
+
+-- ==============================================
+-- СОЗДАНИЕ КНОПКИ (BIND)
+-- ==============================================
+local function UpdateAimButtonState()
+    local btn = BindableButtons.Buttons["aim_toggle"]
+    if not btn then return end
+    local textLabel = btn:FindFirstChild("@Text")
+    if textLabel then
+        textLabel.Text = AimLockEnabled and "ON" or "OFF"
+    end
+    local stroke = btn:FindFirstChild("@Stroke")
+    if stroke then
+        if AimLockEnabled then
+            stroke.Color = __ACTIVE_COLOR
         else
-            -- Мгновенное наведение
-            CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, targetPos)
-        end
-        
-        -- Jitter (микродрожание)
-        if Config.AntiDetect.Jitter > 0 then
-            local jitter = Vector3.new(
-                math.sin(os.clock() * 10) * Config.AntiDetect.Jitter * 0.1,
-                math.cos(os.clock() * 10) * Config.AntiDetect.Jitter * 0.1,
-                0
-            )
-            CurrentCamera.CFrame = CurrentCamera.CFrame + jitter
+            stroke.Color = __NORMAL_COLOR
         end
     end
-}
+end
 
--- ==============================================
--- АВТО-ОБНОВЛЕНИЕ
--- ==============================================
-local AutoUpdater = {
-    LastCheck = 0,
-    CurrentVersion = "1.0",
+local function ToggleAimLock()
+    AimLockEnabled = not AimLockEnabled
+    if AimLockEnabled then 
+        TargetPlayer = FindMurderer(nil) 
+    else 
+        TargetPlayer = nil 
+    end
+    UpdateAimButtonState()
+end
+
+local function CreateBindButton()
+    if BindableButtons.Buttons["aim_toggle"] then return end
     
-    Check = function()
-        -- Имитация проверки обновлений
-        -- В реальности здесь был бы запрос к серверу
-        return false
+    BindableButtons.AddBButton("aim_toggle", "Aim", function()
+        ToggleAimLock()
+    end, false)
+    
+    local btn = BindableButtons.Buttons["aim_toggle"]
+    if btn then
+        local screen = Workspace.CurrentCamera.ViewportSize
+        btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
     end
-}
+    
+    UpdateAimButtonState()
+end
+
+local function DeleteBindButton()
+    BindableButtons.DeleteBButton("aim_toggle")
+end
+
+local function ToggleBindableVisibility()
+    local btn = BindableButtons.Buttons["aim_toggle"]
+    if btn then
+        btn.Visible = ShowBindableButton
+    end
+end
 
 -- ==============================================
--- ИНТЕРФЕЙС (MM2 EDITION)
+-- МЕНЮ
 -- ==============================================
-local shared = odh_shared_plugins
-local my_section = shared.AddSection("🔪 MM2 ULTIMATE SUITE V1.0")
+my_section:AddLabel("👑 Developer: @anya_bts | Premium Edition")
+my_section:AddParagraph("🎯 Status & Info", "Mode: ABSOLUTE HARD LOCK\nZero Delay & Zero Smoothing.")
 
-my_section:AddLabel("👑 Developer: BETA | Absolute-02")
-my_section:AddParagraph("⚡ Status", "Fully optimized for Murder Mystery 2\nAuto-detect roles | Anti-detect | Smart AI")
-
-my_section:AddToggle("🔪 Enable Aim Lock (Murderer Only)", function(b)
-    AimLock.Enabled = b
-    if b then
-        AimLock.Target = AimLock.FindMurderer()
-    else
-        AimLock.Target = nil
-        AimLock.LockedTarget = nil
-    end
+my_section:AddToggle("🎯 Enable Aim Lock", function(b)
+    AimLockEnabled = b
+    if not b then TargetPlayer = nil end
+    UpdateAimButtonState()
+    if AimLockEnabled then TargetPlayer = FindMurderer(nil) end
 end)
 
-my_section:AddToggle("🔄 Auto Switch Target", function(b)
-    Config.AimLock.AutoSwitch = b
-end)(true)
-
-my_section:AddToggle("🛡️ Anti-Detect Mode", function(b)
-    Config.AntiDetect.Enabled = b
-end)(true)
-
-my_section:AddDropdown("🎯 Priority Mode", {"Distance", "Health", "Balanced"}, function(s)
-    if s == "Distance" then Config.AimLock.Priority = "distance"
-    elseif s == "Health" then Config.AimLock.Priority = "health"
-    else Config.AimLock.Priority = "balanced" end
+my_section:AddToggle("📱 Show Screen Button", function(b)
+    ShowBindableButton = b
+    ToggleBindableVisibility()
 end)
 
-my_section:AddDropdown("🎯 Target Body Part", {"Head (Critical)", "Torso (Safe)"}, function(s)
-    if s:find("Head") then Config.AimLock.TargetPart = "Head"
-    else Config.AimLock.TargetPart = "HumanoidRootPart" end
-end)
-
-my_section:AddSlider("⚡ Prediction Level", 0, 50, 15, function(v)
-    Config.AimLock.PredictionLevel = v / 100
-end)
-
-my_section:AddSlider("📏 Max Distance", 100, 500, 350, function(v)
-    Config.AimLock.MaxDistance = v
-end)
-
-my_section:AddSlider("🎯 Smoothness", 0, 100, 0, function(v)
-    Config.AimLock.Smoothness = v / 100
-end)
-
-my_section:AddKeybind("⌨️ Quick Toggle", "T", function()
-    AimLock.Enabled = not AimLock.Enabled
-    if AimLock.Enabled then
-        AimLock.Target = AimLock.FindMurderer()
-    else
-        AimLock.Target = nil
-        AimLock.LockedTarget = nil
+my_section:AddSlider("🔘 Button Size (%)", 5, 25, 11, function(value)
+    bindButtonSize = value / 100
+    local btn = BindableButtons.Buttons["aim_toggle"]
+    if btn then
+        local screen = Workspace.CurrentCamera.ViewportSize
+        btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
     end
 end)
 
-my_section:AddButton("🔄 Force Rescan", function()
-    AimLock.Target = nil
-    AimLock.LockedTarget = nil
-    AimLock.Target = AimLock.FindMurderer()
-    shared.Notify("🔄 Target rescanned!", 1)
+my_section:AddToggle("🧱 Wall Check (Raycast)", function(b)
+    WallCheckEnabled = b
+    shared.Notify("🧱 Wall Check: "..(b and "ENABLED" or "DISABLED"), 2)
 end)
 
--- ==============================================
--- ЗАПУСК
--- ==============================================
-RunService:BindToRenderStep(
-    "MM2_UltimateSuite_PhaseSync",
-    Enum.RenderPriority.Camera.Value + 75,
-    AimLock.Loop
+my_section:AddDropdown("🎯 Target Body Part", 
+    {"Head (Critical)", "Torso (Safe Root)"}, 
+    function(s) 
+        if s:find("Head") then TargetPart = "Head"
+        else TargetPart = "HumanoidRootPart" end
+    end
 )
 
-LocalPlayer.CharacterAdded:Connect(function()
-    AimLock.Target = nil
-    AimLock.LockedTarget = nil
+my_section:AddDropdown("⚡ Prediction Level", 
+    {"Low (0.08)", "Medium (0.145)", "High (0.20) ★", "Disabled"}, 
+    function(s)
+        if s:find("Low") then PredictionLevel = 0.08
+        elseif s:find("Medium") then PredictionLevel = 0.145
+        elseif s:find("High") then PredictionLevel = 0.2
+        else PredictionLevel = 0 end
+    end
+)
+
+my_section:AddKeybind("⌨️ Quick Toggle Key", "T", function()
+    ToggleAimLock()
 end)
 
-shared.Notify("🔪 MM2 Ultimate Suite V1.0 Loaded!", 3)
-print("🔪 MM2 Ultimate Suite V1.0 — Beta Edition")
+-- ==============================================
+-- ЗАПУСК КНОПКИ ПРИ ЗАГРУЗКЕ
+-- ==============================================
+CreateBindButton()
+ToggleBindableVisibility()
+
+-- ==============================================
+-- ПРИВЯЗКА AIMLOCK К RENDERSTEP
+-- ==============================================
+RunService:BindToRenderStep(
+    "MM2_AimLock_PhaseSync", 
+    Enum.RenderPriority.Camera.Value + 1, 
+    AimLockLoop
+)
+
+-- Очистка при смене персонажа
+LocalPlayer.CharacterAdded:Connect(function()
+    TargetPlayer = nil
+end)
+
+-- Очистка при выгрузке плагина
+RootMaid:GiveTask(function()
+    DeleteBindButton()
+    RunService:UnbindFromRenderStep("MM2_AimLock_PhaseSync")
+end)
+
+shared.Notify("MM2 Aim Lock V2.6 + Bind Button Loaded!", 3)
+print("MM2 Aim Lock V2.6 with normal bind button loaded!")
