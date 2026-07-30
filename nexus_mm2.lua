@@ -1,577 +1,378 @@
--- ================================================================================================
--- ⚡⚡⚡ ULTRA INSTINCT V24.3 ULTRA-LITE+ ⚡⚡⚡
--- 5 УЛЬТРА-РЕЖИМОВ: PRO | INSTINCT | SECRETIVE | ANNIHILATING | ADAPTIVE
--- В МЕНЮ: вкл/выкл, выбор режима, тогглы физики, статистика
--- ================================================================================================
-
+-- =============================================================================
+-- ⚡ ULTRA INSTINCT V24.8 PERF  (fps fix: no RenderStepped, no forced GC,
+--    cached murderer, key-gated HUD text. Aim core untouched.)
+-- =============================================================================
 local shared = odh_shared_plugins
-local section = shared.AddSection("⚡ ULTRA INSTINCT ULTRA-LITE ⚡")
-
 local internal_shared = odh_internal_shared
-local gpl_preset = internal_shared.MM2_GPL
+local gpl_preset = internal_shared and internal_shared.MM2_GPL or nil
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+local Players      = game:GetService("Players")
+local RunService   = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local CoreGui      = game:GetService("CoreGui")
+local LocalPlayer  = Players.LocalPlayer
 
-local math_clamp = math.clamp
-local math_abs = math.abs
-local math_floor = math.floor
-local os_clock = os.clock
-local os_time = os.time
-local collectgarbage = collectgarbage
-local pairs = pairs
-local ipairs = ipairs
-local table_insert = table.insert
-local table_remove = table.remove
-local Vector3_new = Vector3.new
+local clamp,abs,floor,exp = math.clamp,math.abs,math.floor,math.exp
+local clock,time = os.clock,os.time
+local tinsert = table.insert
+local V3 = Vector3.new
 
-local VERSION = "24.3 ULTRA-LITE+"
-local GRAVITY = 196.2
-local BULLET_SPEED = 2500
-local MAX_HISTORY = 50
-local DEFAULT_REACTION = 0.15
-local ADAPTIVE_GAIN = 0.05
-local MAX_ADAPTIVE_OFFSET = 3.0
-local MAX_THREAT_DISTANCE = 500
+local VERSION = "24.8 PERF"
+local GRAVITY, BULLET_SPEED = 196.2, 2500
+local DEFAULT_REACTION, ADAPTIVE_GAIN, MAX_ADAPT = 0.15, 0.05, 3.0
+local MAX_THREAT, HYSTERESIS, HIT_WINDOW, DEAD_ZONE = 500, 15, 0.6, 0.2
+local MURDERER_SCAN = 0.5   -- раз в 0.5с один проход ролей (вместо 8/сек в HUD + 2/сек в tick)
 
--- ====== 5 УЛЬТРА-РЕЖИМОВ ======
+if type(_G.__UI_CLEANUP) == "function" then pcall(_G.__UI_CLEANUP) end
+local _conns = {}
+local function track(c) _conns[#_conns+1] = c; return c end
+if not gpl_preset then warn("[UltraInstinct] MM2_GPL not found - aim core disabled, HUD/menu still run.") end
+
 local MODES = {
-    PRO = {
-        name = "PRO",
-        desc = "Сбалансированный для опытных",
-        h_base = 125, h_ping = 0.22, h_speed = 1.5,
-        v_base = 125, v_ping = 0.14, v_dist = 0.18,
-        sim_base = 35, sim_speed = 0.4,
-        int_base = 50, int_speed = -0.3,
-        offX = -2, offY = 0, offZ = 0,
-    },
-    INSTINCT = {
-        name = "INSTINCT",
-        desc = "Максимальное упреждение для атаки",
-        h_base = 145, h_ping = 0.30, h_speed = 1.8,
-        v_base = 140, v_ping = 0.18, v_dist = 0.22,
-        sim_base = 45, sim_speed = 0.5,
-        int_base = 35, int_speed = -0.2,
-        offX = -3, offY = 0, offZ = 2,
-    },
-    SECRETIVE = {
-        name = "SECRETIVE",
-        desc = "Минимальное смещение для скрытности",
-        h_base = 105, h_ping = 0.15, h_speed = 1.0,
-        v_base = 105, v_ping = 0.10, v_dist = 0.12,
-        sim_base = 28, sim_speed = 0.2,
-        int_base = 60, int_speed = -0.4,
-        offX = 0, offY = 0, offZ = -1,
-    },
-    ANNIHILATING = {
-        name = "ANNIHILATING",
-        desc = "Экстремальное упреждение",
-        h_base = 185, h_ping = 0.50, h_speed = 3.0,
-        v_base = 175, v_ping = 0.30, v_dist = 0.35,
-        sim_base = 65, sim_speed = 1.0,
-        int_base = 20, int_speed = -0.05,
-        offX = -5, offY = 0, offZ = 5,
-    },
-    ADAPTIVE = {
-        name = "ADAPTIVE",
-        desc = "Авто-переключение по дистанции",
-        h_base = 125, h_ping = 0.22, h_speed = 1.5,
-        v_base = 125, v_ping = 0.14, v_dist = 0.18,
-        sim_base = 35, sim_speed = 0.4,
-        int_base = 50, int_speed = -0.3,
-        offX = -2, offY = 0, offZ = 0,
-        auto_switch = true,
-    },
+ PRO          = {h_base=125,h_ping=.22,h_speed=1.5,v_base=125,v_ping=.14,v_dist=.18,sim_base=35,sim_speed=.4,int_base=50,int_speed=-.3,offX=-2,offY=0,offZ=0},
+ INSTINCT     = {h_base=145,h_ping=.30,h_speed=1.8,v_base=140,v_ping=.18,v_dist=.22,sim_base=45,sim_speed=.5,int_base=35,int_speed=-.2,offX=-3,offY=0,offZ=2},
+ SECRETIVE    = {h_base=105,h_ping=.15,h_speed=1.0,v_base=105,v_ping=.10,v_dist=.12,sim_base=28,sim_speed=.2,int_base=60,int_speed=-.4,offX=0,offY=0,offZ=-1},
+ ANNIHILATING = {h_base=185,h_ping=.50,h_speed=3.0,v_base=175,v_ping=.30,v_dist=.35,sim_base=65,sim_speed=1.,int_base=20,int_speed=-.05,offX=-5,offY=0,offZ=5},
+ ADAPTIVE     = {h_base=125,h_ping=.22,h_speed=1.5,v_base=125,v_ping=.14,v_dist=.18,sim_base=35,sim_speed=.4,int_base=50,int_speed=-.3,offX=-2,offY=0,offZ=0,auto_switch=true},
+}
+local ASUB = {
+ CLOSE={h_base=135,h_ping=.28,h_speed=1.8,v_base=135,v_ping=.18,v_dist=.22,sim_base=42,sim_speed=.5,int_base=38,int_speed=-.2,offX=-4,offY=0,offZ=3},
+ MID  ={h_base=125,h_ping=.22,h_speed=1.5,v_base=125,v_ping=.14,v_dist=.18,sim_base=35,sim_speed=.4,int_base=50,int_speed=-.3,offX=-2,offY=0,offZ=1},
+ SNIP ={h_base=95, h_ping=.10,h_speed=.8, v_base=95, v_ping=.08,v_dist=.10,sim_base=22,sim_speed=.15,int_base=68,int_speed=-.5,offX=1,offY=0,offZ=-2},
+ DEF  ={h_base=105,h_ping=.15,h_speed=1.0,v_base=105,v_ping=.10,v_dist=.12,sim_base=28,sim_speed=.2,int_base=60,int_speed=-.4,offX=0,offY=0,offZ=-1},
 }
 
-local ADAPTIVE_SUBS = {
-    CLOSE = { h_base = 135, h_ping = 0.28, h_speed = 1.8, v_base = 135, v_ping = 0.18, v_dist = 0.22, sim_base = 42, sim_speed = 0.5, int_base = 38, int_speed = -0.2, offX = -4, offY = 0, offZ = 3 },
-    MID   = { h_base = 125, h_ping = 0.22, h_speed = 1.5, v_base = 125, v_ping = 0.14, v_dist = 0.18, sim_base = 35, sim_speed = 0.4, int_base = 50, int_speed = -0.3, offX = -2, offY = 0, offZ = 1 },
-    SNIPER = { h_base = 95,  h_ping = 0.10, h_speed = 0.8, v_base = 95,  v_ping = 0.08, v_dist = 0.10, sim_base = 22, sim_speed = 0.15, int_base = 68, int_speed = -0.5, offX = 1, offY = 0, offZ = -2 },
-    DEF   = { h_base = 105, h_ping = 0.15, h_speed = 1.0, v_base = 105, v_ping = 0.10, v_dist = 0.12, sim_base = 28, sim_speed = 0.2, int_base = 60, int_speed = -0.4, offX = 0, offY = 0, offZ = -1 },
-}
-
--- ====== СОСТОЯНИЕ ======
 local State = {
-    Enabled = false,
-    Target = nil,
-    TargetLockTime = 0,
-    LastGC = 0,
-    LastCheck = 0,
-    LastApplied = {H=-999,V=-999,Sim=-999,Int=-999,X=-999,Y=-999,Z=-999},
-    MyRoot = nil,
-    MyChar = nil,
-    TargetPosHistory = {},
-    TargetVelHistory = {},
-    SmoothPos = nil,
-    SmoothVel = nil,
-    PingHistory = {},
-    PingSmooth = 60,
-    CurrentMode = "ADAPTIVE",
-    Settings = {
-        leadMultiplier = 1.0,
-        verticalCorrection = 1.0,
-        reactionTime = DEFAULT_REACTION,
-        minDistance = 3,
-        maxDistance = 350,
-        useGravity = true,
-        useDrag = true,
-        predictJump = true,
-        targetLock = true,
-        lockTime = 2.0,
-        prioritySystem = true,
-        adaptiveLead = true,
-        adaptiveGain = ADAPTIVE_GAIN,
-        maxAdaptiveOffset = MAX_ADAPTIVE_OFFSET,
-    },
-    Stats = {
-        Shots = 0, Hits = 0, Misses = 0,
-        TotalDamage = 0, Kills = 0, Deaths = 0,
-        Accuracy = 0, StartTime = os_time(),
-        BestStreak = 0, CurrentStreak = 0,
-    },
-    LastError = Vector3_new(0,0,0),
-    ErrorHistory = {},
-    AdaptiveOffset = {x=0, y=0, z=0},
-    AdaptiveConfidence = 0.5,
-    ThreatMap = {},
-    WeaponType = "knife",
+ Enabled=false, Target=nil, TargetScore=-1e9, TargetLockTime=0, LastCheck=0,
+ LastApplied={H=-999,V=-999,Sim=-999,Int=-999,X=-999,Y=-999,Z=-999},
+ MyRoot=nil, MyChar=nil, SmoothPos=nil, SmoothVel=nil,
+ PingHistory={}, PingSmooth=60, CurrentMode="ADAPTIVE",
+ MurdererPlayer=nil,                 -- кэш: обновляется раз в MURDERER_SCAN
+ Settings={leadMultiplier=1,verticalCorrection=1,reactionTime=DEFAULT_REACTION,minDistance=3,maxDistance=350,
+   useGravity=true,useDrag=true,predictJump=true,targetLock=true,lockTime=2,prioritySystem=true,
+   adaptiveLead=true,adaptiveGain=ADAPTIVE_GAIN,maxAdaptiveOffset=MAX_ADAPT},
+ Stats={Shots=0,Hits=0,Kills=0,Deaths=0,StartTime=time(),BestStreak=0,CurrentStreak=0},
+ ErrorHistory={}, AdaptiveOffset={x=0,y=0,z=0}, AdaptiveConfidence=.5,
+ ThreatMap={}, WeaponType="knife", LastShotTime=0, LastShotTarget=nil, ShotArmed=false,
 }
+local HitMarker = {}
 
--- ====== ФУНКЦИИ ======
-local function GetRoot(p)
-    if not p then return nil end
-    local c = p.Character
-    if not c then return nil end
-    return c:FindFirstChild("HumanoidRootPart")
-end
-
+local function GetRoot(p) local c=p and p.Character; return c and c:FindFirstChild("HumanoidRootPart") end
 local function UpdateCache()
-    local c = LocalPlayer.Character
-    if c then
-        State.MyChar = c
-        State.MyRoot = c:FindFirstChild("HumanoidRootPart")
-        for _, item in ipairs(c:GetChildren()) do
-            if item:IsA("Tool") then
-                local n = item.Name:lower()
-                if n:find("knife") or n:find("blade") then State.WeaponType = "knife"
-                elseif n:find("gun") or n:find("pistol") or n:find("revolver") then State.WeaponType = "gun"
-                else State.WeaponType = "knife" end
-                break
-            end
-        end
-    else
-        State.MyChar = nil
-        State.MyRoot = nil
-    end
+ local c=LocalPlayer.Character
+ if c then
+  State.MyChar=c; State.MyRoot=c:FindFirstChild("HumanoidRootPart"); State.WeaponType="knife"
+  for _,it in ipairs(c:GetChildren()) do if it:IsA("Tool") then
+   local n=it.Name:lower()
+   if n:find("gun") or n:find("pistol") or n:find("revolver") then State.WeaponType="gun"
+   elseif n:find("knife") or n:find("blade") then State.WeaponType="knife" end
+   break
+  end end
+ else State.MyChar,State.MyRoot=nil,nil end
 end
-
-local function HasWeapon(p, types)
-    if not p or not p.Character then return false end
-    types = types or {"knife","blade","dagger","sword","gun","pistol","revolver"}
-    local function check(cont)
-        if not cont then return false end
-        for _, item in ipairs(cont:GetChildren()) do
-            if item:IsA("Tool") then
-                local n = item.Name:lower()
-                for _, t in ipairs(types) do
-                    if n:find(t) then return true end
-                end
-            end
-        end
-        return false
-    end
-    return check(p.Character) or check(p:FindFirstChild("Backpack"))
+local function HasWeapon(p,types)
+ if not p or not p.Character then return false end
+ types=types or {"knife","blade","dagger","sword","gun","pistol","revolver"}
+ local function ck(c) if not c then return false end
+  for _,it in ipairs(c:GetChildren()) do if it:IsA("Tool") then local n=it.Name:lower()
+   for _,t in ipairs(types) do if n:find(t) then return true end end end end return false end
+ return ck(p.Character) or ck(p:FindFirstChild("Backpack"))
 end
-
 local function IsMurderer(p)
-    if not p then return false end
-    if p:GetAttribute("Murderer") == true or p:GetAttribute("isMurderer") == true then return true end
-    if HasWeapon(p) then return true end
-    local c = p.Character
-    if c and (c:FindFirstChild("Knife") or c:FindFirstChild("Blade") or c:FindFirstChild("Gun")) then return true end
-    return false
+ if not p then return false end
+ if p:GetAttribute("Murderer")==true or p:GetAttribute("isMurderer")==true then return true end
+ if HasWeapon(p,{"knife","blade","dagger","sword"}) then return true end
+ local c=p.Character; return c and (c:FindFirstChild("Knife") or c:FindFirstChild("Blade")) or false
 end
-
 local function IsSheriff(p)
-    if not p then return false end
-    if p:GetAttribute("Sheriff") == true or p:GetAttribute("isSheriff") == true then return true end
-    return HasWeapon(p, {"gun","pistol","revolver"}) and not IsMurderer(p)
+ if not p then return false end
+ if p:GetAttribute("Sheriff")==true or p:GetAttribute("isSheriff")==true then return true end
+ return HasWeapon(p,{"gun","pistol","revolver"}) and not IsMurderer(p)
+end
+local function SmoothPing(r) local h=State.PingHistory; tinsert(h,r); if #h>15 then table.remove(h,1) end
+ local s=0; for _,v in ipairs(h) do s=s+v end; State.PingSmooth=s/#h; return State.PingSmooth end
+
+-- единственный проход ролей (кэш) — HUD и прицел больше не сканируют сами
+local function UpdateMurdererCache()
+ local found=nil
+ for _,pl in ipairs(Players:GetPlayers()) do
+  if pl~=LocalPlayer and IsMurderer(pl) then found=pl; break end
+ end
+ State.MurdererPlayer=found
 end
 
-local function SmoothPing(raw)
-    local hist = State.PingHistory
-    table_insert(hist, raw)
-    if #hist > 15 then table_remove(hist, 1) end
-    local sum = 0
-    for _, v in ipairs(hist) do sum = sum + v end
-    State.PingSmooth = sum / #hist
-    return State.PingSmooth
+local function AdaptiveCorrection(err)
+ if not State.Settings.adaptiveLead then return end
+ local e=V3(abs(err.X)<DEAD_ZONE and 0 or err.X, abs(err.Y)<DEAD_ZONE and 0 or err.Y, abs(err.Z)<DEAD_ZONE and 0 or err.Z)
+ local h=State.ErrorHistory; tinsert(h,e); if #h>30 then table.remove(h,1) end
+ if #h>=10 then
+  local avg=V3(0,0,0); for _,x in ipairs(h) do avg=avg+x end; avg=avg/#h
+  local var=0; for _,x in ipairs(h) do var=var+(x-avg).Magnitude end; var=var/#h
+  State.AdaptiveConfidence=State.AdaptiveConfidence*.8+clamp(1-var*.12,.2,1)*.2
+  local g=State.Settings.adaptiveGain*State.AdaptiveConfidence; local m=State.Settings.maxAdaptiveOffset
+  State.AdaptiveOffset.x=clamp(State.AdaptiveOffset.x+avg.X*g,-m,m)
+  State.AdaptiveOffset.y=clamp(State.AdaptiveOffset.y+avg.Y*g,-m,m)
+  State.AdaptiveOffset.z=clamp(State.AdaptiveOffset.z+avg.Z*g,-m,m)
+  State.ErrorHistory={}
+ end
 end
-
-local function AdaptiveCorrection(error)
-    if not State.Settings.adaptiveLead then return end
-    local hist = State.ErrorHistory
-    table_insert(hist, error)
-    if #hist > 30 then table_remove(hist, 1) end
-    if #hist >= 10 then
-        local avg = Vector3_new(0,0,0)
-        for _, e in ipairs(hist) do avg = avg + e end
-        avg = avg / #hist
-        local gain = State.Settings.adaptiveGain * State.AdaptiveConfidence
-        State.AdaptiveOffset.x = State.AdaptiveOffset.x + avg.X * gain
-        State.AdaptiveOffset.y = State.AdaptiveOffset.y + avg.Y * gain
-        State.AdaptiveOffset.z = State.AdaptiveOffset.z + avg.Z * gain
-        local maxOff = State.Settings.maxAdaptiveOffset
-        State.AdaptiveOffset.x = math_clamp(State.AdaptiveOffset.x, -maxOff, maxOff)
-        State.AdaptiveOffset.y = math_clamp(State.AdaptiveOffset.y, -maxOff, maxOff)
-        State.AdaptiveOffset.z = math_clamp(State.AdaptiveOffset.z, -maxOff, maxOff)
-        State.ErrorHistory = {}
-    end
+local function DecayAdaptive()
+ local o=State.AdaptiveOffset; o.x,o.y,o.z=o.x*.9,o.y*.9,o.z*.9
+ if abs(o.x)<.01 then o.x=0 end; if abs(o.y)<.01 then o.y=0 end; if abs(o.z)<.01 then o.z=0 end
 end
 
 local function BuildThreatMap()
-    local myRoot = State.MyRoot
-    if not myRoot then return end
-    local myPos = myRoot.Position
-    State.ThreatMap = {}
-    for _, pl in ipairs(Players:GetPlayers()) do
-        if pl ~= LocalPlayer then
-            local root = GetRoot(pl)
-            if root then
-                local pos = root.Position
-                local dist = (pos - myPos).Magnitude
-                if dist > MAX_THREAT_DISTANCE then dist = MAX_THREAT_DISTANCE end
-                local vel = root.AssemblyLinearVelocity
-                local speed = vel.Magnitude
-                local threat = 0
-                if IsMurderer(pl) then threat = threat + 100
-                elseif IsSheriff(pl) then threat = threat + 30 end
-                threat = threat + (1 / (dist + 1)) * 50
-                threat = threat + speed * 2
-                local look = root.CFrame.LookVector
-                local dirToUs = (myPos - pos).Unit
-                local facing = look:Dot(dirToUs)
-                if facing > 0.5 then threat = threat + 20 end
-                local hum = pl.Character and pl.Character:FindFirstChild("Humanoid")
-                if hum and hum.Health < 30 then threat = threat * 1.3 end
-                State.ThreatMap[pl] = threat
-            end
-        end
-    end
+ local my=State.MyRoot; if not my then return end; local mp=my.Position; State.ThreatMap={}
+ for _,pl in ipairs(Players:GetPlayers()) do if pl~=LocalPlayer then local r=GetRoot(pl)
+  if r then local pos=r.Position; local d=(pos-mp).Magnitude; if d>MAX_THREAT then d=MAX_THREAT end
+   local sp=r.AssemblyLinearVelocity.Magnitude; local t=0
+   if IsMurderer(pl) then t=t+100 elseif IsSheriff(pl) then t=t+30 end
+   t=t+(1/(d+1))*50+sp*2
+   if r.CFrame.LookVector:Dot((mp-pos).Unit)>.5 then t=t+20 end
+   local hum=pl.Character and pl.Character:FindFirstChild("Humanoid")
+   if hum and hum.Health<30 then t=t*1.3 end
+   State.ThreatMap[pl]=t
+  end end end
 end
-
+local function resetSmooth() State.SmoothPos,State.SmoothVel=nil,nil end
 local function FindBestTarget()
-    local now = os_clock()
-    if State.Settings.targetLock and State.Target and State.Target.Parent == Players then
-        local c = State.Target.Character
-        if c and c:FindFirstChild("Humanoid") and c.Humanoid.Health > 0 and (now - State.TargetLockTime < State.Settings.lockTime) then
-            if IsMurderer(State.Target) then return State.Target end
-        end
-    end
-    if now - State.LastCheck < 0.5 then return State.Target end
-    State.LastCheck = now
-
-    BuildThreatMap()
-    local myRoot = State.MyRoot
-    if not myRoot then return nil end
-
-    local best = nil
-    local bestScore = -math.huge
-    for pl, threat in pairs(State.ThreatMap) do
-        if pl ~= LocalPlayer then
-            if IsMurderer(pl) then threat = threat * 1.5 end
-            if threat > bestScore then
-                bestScore = threat
-                best = pl
-            end
-        end
-    end
-
-    State.Target = best
-    if best then State.TargetLockTime = now end
-    return best
+ local now=clock()
+ if State.Settings.targetLock and State.Target and State.Target.Parent==Players then
+  local c=State.Target.Character
+  if c and c:FindFirstChild("Humanoid") and c.Humanoid.Health>0 and (now-State.TargetLockTime<State.Settings.lockTime) then
+   if IsMurderer(State.Target) then return State.Target end end end
+ if now-State.LastCheck<0.5 then return State.Target end; State.LastCheck=now; BuildThreatMap()
+ if not State.MyRoot then return nil end
+ local cur=State.ThreatMap[State.Target] or -1e9; if State.Target and IsMurderer(State.Target) then cur=cur*1.5 end
+ local best,bs=nil,-1e9
+ for pl,th in pairs(State.ThreatMap) do if pl~=LocalPlayer then local s=IsMurderer(pl) and th*1.5 or th
+  if s>bs then bs=s; best=pl end end end
+ if State.Target and best and best~=State.Target and bs<cur+HYSTERESIS then return State.Target end
+ if best~=State.Target then resetSmooth() end
+ State.Target=best; State.TargetScore=bs; if best then State.TargetLockTime=now end; return best
 end
-
-local function SmoothData(root)
-    if not root then return nil, nil end
-    local pos = root.Position
-    local vel = root.AssemblyLinearVelocity
-
-    local ph = State.TargetPosHistory
-    local vh = State.TargetVelHistory
-    table_insert(ph, pos)
-    table_insert(vh, vel)
-    if #ph > MAX_HISTORY then table_remove(ph, 1) end
-    if #vh > MAX_HISTORY then table_remove(vh, 1) end
-
-    local avgP = Vector3_new(0,0,0)
-    local avgV = Vector3_new(0,0,0)
-    for i = 1, #ph do
-        avgP = avgP + ph[i]
-        avgV = avgV + vh[i]
-    end
-    avgP = avgP / #ph
-    avgV = avgV / #vh
-    State.SmoothPos = avgP
-    State.SmoothVel = avgV
-    return avgP, avgV
+local function SmoothData(root,dt)
+ local p,vel=root.Position,root.AssemblyLinearVelocity
+ if not State.SmoothPos then State.SmoothPos,State.SmoothVel=p,vel
+ else State.SmoothPos=State.SmoothPos:Lerp(p,1-exp(-dt/0.06)); State.SmoothVel=State.SmoothVel:Lerp(vel,1-exp(-dt/0.10)) end
+ return State.SmoothPos,State.SmoothVel
 end
-
-local function CalculateLead(smoothPos, smoothVel, myPos, ping, dist)
-    local bulletTime = dist / BULLET_SPEED
-    if State.WeaponType == "gun" then bulletTime = dist / 3000 end
-    local totalTime = bulletTime + ping / 1000 + State.Settings.reactionTime
-    local vel = smoothVel
-    if State.Settings.useDrag then
-        local drag = 0.98 ^ (totalTime * 10)
-        vel = vel * drag
-    end
-    local predictedPos = smoothPos + vel * totalTime
-    if State.Settings.useGravity then
-        predictedPos = predictedPos + Vector3_new(0, -0.5 * GRAVITY * totalTime * totalTime, 0)
-    end
-    return predictedPos - smoothPos
+local function CalculateLead(sp,sv,mp,ping,dist)
+ local bt=dist/(State.WeaponType=="gun" and 3000 or BULLET_SPEED); local tt=bt+ping/1000+State.Settings.reactionTime
+ local v=sv; if State.Settings.useDrag then v=v*(0.98^(tt*10)) end
+ local pp=sp+v*tt; if State.Settings.useGravity then pp=pp+V3(0,-0.5*GRAVITY*tt*tt,0) end; return pp-sp
 end
-
-local function ApplyGPL(sim, interval, x, y, z, h, v)
-    local last = State.LastApplied
-    if math_abs(last.H-h) < 2 and math_abs(last.V-v) < 2 and
-       math_abs(last.Sim-sim) < 2 and math_abs(last.Int-interval) < 2 and
-       last.X == x and last.Y == y and last.Z == z then return end
-    last.H,last.V,last.Sim,last.Int,last.X,last.Y,last.Z = h,v,sim,interval,x,y,z
-
-    if gpl_preset[4] then gpl_preset[4](sim) end
-    if gpl_preset[5] then gpl_preset[5](interval) end
-    if gpl_preset[6] then gpl_preset[6](x) end
-    if gpl_preset[7] then gpl_preset[7](y) end
-    if gpl_preset[8] then gpl_preset[8](z) end
-    if gpl_preset[9] then gpl_preset[9](h) end
-    if gpl_preset[10] then gpl_preset[10](v) end
+local function ApplyGPL(sim,interval,x,y,z,h,v)
+ if not gpl_preset then return end; local L=State.LastApplied
+ if abs(L.H-h)<2 and abs(L.V-v)<2 and abs(L.Sim-sim)<2 and abs(L.Int-interval)<2 and L.X==x and L.Y==y and L.Z==z then return end
+ L.H,L.V,L.Sim,L.Int,L.X,L.Y,L.Z=h,v,sim,interval,x,y,z
+ pcall(function() if gpl_preset[4]  then gpl_preset[4](sim)      end end)
+ pcall(function() if gpl_preset[5]  then gpl_preset[5](interval) end end)
+ pcall(function() if gpl_preset[6]  then gpl_preset[6](x)        end end)
+ pcall(function() if gpl_preset[7]  then gpl_preset[7](y)        end end)
+ pcall(function() if gpl_preset[8]  then gpl_preset[8](z)        end end)
+ pcall(function() if gpl_preset[9]  then gpl_preset[9](h)        end end)
+ pcall(function() if gpl_preset[10] then gpl_preset[10](v)       end end)
 end
-
 local function InitBase()
-    if not internal_shared["RevertSettings_PrioritizeYourPing"] and gpl_preset[1] then gpl_preset[1]() end
-    if not internal_shared["RevertSettings_PredictJump"] and gpl_preset[2] then gpl_preset[2]() end
-    if not internal_shared["RevertSettings_PredictLag"] and gpl_preset[3] then gpl_preset[3]() end
+ if not gpl_preset then return end
+ pcall(function() if not internal_shared["RevertSettings_PrioritizeYourPing"] and gpl_preset[1] then gpl_preset[1]() end end)
+ pcall(function() if not internal_shared["RevertSettings_PredictJump"]         and gpl_preset[2] then gpl_preset[2]() end end)
+ pcall(function() if not internal_shared["RevertSettings_PredictLag"]          and gpl_preset[3] then gpl_preset[3]() end end)
 end
 
-local function Optimize()
-    local now = os_clock()
-    if now - State.LastGC > 30 then
-        State.LastGC = now
-        collectgarbage("collect")
-    end
+-- ====== эвристика попаданий ======
+local function RegisterHit()
+ local s=State.Stats; s.Hits=s.Hits+1; s.Kills=s.Kills+1; s.CurrentStreak=s.CurrentStreak+1
+ if s.CurrentStreak>s.BestStreak then s.BestStreak=s.CurrentStreak end
+ State.ShotArmed=false; if HitMarker.Fire then HitMarker.Fire() end
+end
+local function ArmShot(t) State.LastShotTime=clock(); State.LastShotTarget=t; State.ShotArmed=true end
+local function CheckHitProxy()
+ if not State.ShotArmed then return end
+ local t=State.LastShotTarget
+ if not t or not t.Parent then State.ShotArmed=false; return end
+ local c=t.Character; local h=c and c:FindFirstChildOfClass("Humanoid")
+ if (not c) or (not h) or h.Health<=0 then RegisterHit() elseif clock()-State.LastShotTime>HIT_WINDOW then State.ShotArmed=false end
 end
 
--- ====== ИНТЕРФЕЙС ======
-section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-section:AddLabel(string.format("⚡⚡⚡ ULTRA INSTINCT %s ⚡⚡⚡", VERSION))
-section:AddLabel("🏆 5 УЛЬТРА-РЕЖИМОВ: PRO | INSTINCT | SECRETIVE | ANNIHILATING | ADAPTIVE")
-section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+-- ====== компактный HUD + hit-marker (БЕЗ RenderStepped) ======
+local HUD={gui=nil,label=nil,stroke=nil,dot=nil,acc=0,hmH=nil,hmV=nil,hm=nil}
+local lastHUDKey=nil
+local function GetHUDGui()
+ local parent; pcall(function() if gethui then parent=gethui() end end)
+ pcall(function() if (not parent or typeof(parent)~="Instance") and getcore then parent=getcore() end end)
+ if typeof(parent)~="Instance" then parent=CoreGui end
+ local sg=parent:FindFirstChild("@ui_hud_v248")
+ if not sg then sg=Instance.new("ScreenGui"); sg.Name="@ui_hud_v248"; sg.ResetOnSpawn=false; sg.IgnoreGuiInset=true
+  pcall(function() sg.ScreenInsets=Enum.ScreenInsets.None end)
+  if syn and syn.protect_gui then pcall(syn.protect_gui,sg) end; sg.Parent=parent end
+ return sg
+end
+local function dcol(d) if d<25 then return "#ff5a5a" elseif d<80 then return "#ffb454" else return "#9fb0c0" end end
 
-local toggle = section:AddToggle("⚡ АКТИВИРОВАТЬ", function(state)
-    State.Enabled = state
-    if state then
-        InitBase()
-        UpdateCache()
-        State.Target = nil
-        print("[Ultra Instinct] Включён")
-    else
-        State.Target = nil
-        collectgarbage("collect")
-        print("[Ultra Instinct] Выключен")
-    end
+-- пульс точки через Tween-петлю: ноль Lua в кадре
+local function startPulse()
+ if not HUD.dot or not HUD.dot.Parent then return end
+ local t1=TweenService:Create(HUD.dot,TweenInfo.new(.5,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Size=UDim2.new(0,11,0,11)})
+ t1.Completed:Connect(function(st)
+  if st==Enum.PlaybackState.Cancelled then return end
+  if not HUD.dot or not HUD.dot.Parent then return end
+  local t2=TweenService:Create(HUD.dot,TweenInfo.new(.5,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Size=UDim2.new(0,7,0,7)})
+  t2.Completed:Connect(function(st2) if st2~=Enum.PlaybackState.Cancelled then startPulse() end end)
+  t2:Play()
+ end)
+ t1:Play()
+end
+
+local function HUD_Init()
+ local sg=GetHUDGui()
+ local f=Instance.new("Frame"); f.Name="@uihud"; f.Size=UDim2.new(0,0,0,22); f.AutomaticSize=Enum.AutomaticSize.X
+ f.Position=UDim2.new(.5,0,0,36); f.AnchorPoint=Vector2.new(.5,0)
+ f.BackgroundColor3=Color3.fromRGB(12,14,18); f.BackgroundTransparency=.12; f.BorderSizePixel=0; f.ZIndex=10; f.Parent=sg
+ Instance.new("UICorner",f).CornerRadius=UDim.new(1,0)
+ local st=Instance.new("UIStroke",f); st.Color=Color3.fromRGB(70,80,100); st.Thickness=1; st.Transparency=.55
+ local li=Instance.new("UIListLayout",f); li.FillDirection=Enum.FillDirection.Horizontal
+ li.VerticalAlignment=Enum.VerticalAlignment.Center; li.SortOrder=Enum.SortOrder.LayoutOrder; li.Padding=UDim.new(0,6)
+ local pd=Instance.new("UIPadding",f); pd.PaddingLeft=UDim.new(0,9); pd.PaddingRight=UDim.new(0,10)
+ pd.PaddingTop=UDim.new(0,4); pd.PaddingBottom=UDim.new(0,4)
+ local dot=Instance.new("Frame"); dot.LayoutOrder=1; dot.Size=UDim2.new(0,7,0,7)
+ dot.BackgroundColor3=Color3.fromRGB(120,130,150); dot.BorderSizePixel=0; dot.ZIndex=11; dot.Parent=f
+ Instance.new("UICorner",dot).CornerRadius=UDim.new(1,0)
+ local lb=Instance.new("TextLabel",f); lb.LayoutOrder=2; lb.Size=UDim2.new(0,0,1,0); lb.AutomaticSize=Enum.AutomaticSize.X
+ lb.BackgroundTransparency=1; lb.Font=Enum.Font.GothamBold; lb.RichText=true
+ lb.Text='<font color="#788296">⚡OFF</font>'; lb.TextColor3=Color3.fromRGB(220,230,240); lb.TextSize=11; lb.ZIndex=11
+ local hm=Instance.new("Frame"); hm.Name="@hitmarker"; hm.Size=UDim2.new(0,40,0,40)
+ hm.Position=UDim2.new(.5,0,.5,0); hm.AnchorPoint=Vector2.new(.5,.5); hm.BackgroundTransparency=1; hm.ZIndex=12; hm.Parent=sg
+ local hmH=Instance.new("Frame",hm); hmH.Size=UDim2.new(0,24,0,2); hmH.Position=UDim2.new(.5,0,.5,0); hmH.AnchorPoint=Vector2.new(.5,.5)
+ hmH.BackgroundColor3=Color3.fromRGB(255,255,255); hmH.BackgroundTransparency=1; hmH.BorderSizePixel=0; Instance.new("UICorner",hmH).CornerRadius=UDim.new(1,0)
+ local hmV=Instance.new("Frame",hm); hmV.Size=UDim2.new(0,2,0,24); hmV.Position=UDim2.new(.5,0,.5,0); hmV.AnchorPoint=Vector2.new(.5,.5)
+ hmV.BackgroundColor3=Color3.fromRGB(255,255,255); hmV.BackgroundTransparency=1; hmV.BorderSizePixel=0; Instance.new("UICorner",hmV).CornerRadius=UDim.new(1,0)
+ HUD.gui,HUD.label,HUD.stroke,HUD.dot,HUD.hm,HUD.hmH,HUD.hmV=sg,lb,st,dot,hm,hmH,hmV
+ startPulse()
+end
+HitMarker.Fire=function()
+ if not HUD.hmH then return end
+ HUD.hmH.BackgroundTransparency,HUD.hmV.BackgroundTransparency=0,0
+ HUD.hmH.BackgroundColor3,HUD.hmV.BackgroundColor3=Color3.fromRGB(255,90,90),Color3.fromRGB(255,90,90)
+ HUD.hm.Size=UDim2.new(0,28,0,28)
+ TweenService:Create(HUD.hm,TweenInfo.new(.12,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.new(0,44,0,44)}):Play()
+ TweenService:Create(HUD.hmH,TweenInfo.new(.26),{BackgroundTransparency=1}):Play()
+ TweenService:Create(HUD.hmV,TweenInfo.new(.26),{BackgroundTransparency=1}):Play()
+end
+
+-- HUD: пересборка текста ТОЛЬКО при смене ключа (нет аллокаций строк в покое)
+local function HUD_Update(dt)
+ if not HUD.label then return end; HUD.acc=HUD.acc+dt; if HUD.acc<0.12 then return end; HUD.acc=0
+ local m=State.MurdererPlayer
+ local d5="-"; local hasD=false
+ if m and State.MyRoot then local r=GetRoot(m)
+  if r then d5=floor((r.Position-State.MyRoot.Position).Magnitude/5); hasD=true end end
+ local key=(State.Enabled and 1 or 0).."|"..State.CurrentMode.."|"..(m and m.Name or "-").."|"..d5
+ if key==lastHUDKey then return end
+ lastHUDKey=key
+ if not State.Enabled then
+  HUD.label.Text='<font color="#788296">⚡OFF</font>'
+  HUD.dot.BackgroundColor3=Color3.fromRGB(120,130,150)
+  HUD.stroke.Color=Color3.fromRGB(70,80,100); HUD.stroke.Transparency=.55; return
+ end
+ local mt='<font color="#7ec8ff">⚡'..State.CurrentMode..'</font>'
+ if m then
+  local dtxt=hasD and (' <font color="'..dcol(d5*5)..'">'..(d5*5)..'</font>') or ""
+  HUD.label.Text=mt..' <font color="#ff6e6e">▸'..m.Name..'</font>'..dtxt
+  HUD.dot.BackgroundColor3=Color3.fromRGB(255,90,90)
+  HUD.stroke.Color=Color3.fromRGB(255,80,80); HUD.stroke.Transparency=.15
+ else
+  HUD.label.Text=mt..' <font color="#788296">▸—</font>'
+  HUD.dot.BackgroundColor3=Color3.fromRGB(120,180,255)
+  HUD.stroke.Color=Color3.fromRGB(120,180,255); HUD.stroke.Transparency=.25
+ end
+end
+
+-- ====== компактное меню ======
+local section=shared.AddSection("⚡ ULTRA INSTINCT "..VERSION)
+section:AddToggle("⚡ АКТИВИРОВАТЬ", function(st)
+ State.Enabled=st
+ if st then InitBase(); UpdateCache(); State.Target=nil else State.Target=nil end
+end)
+section:AddDropdown("Режим", {"PRO","INSTINCT","SECRETIVE","ANNIHILATING","ADAPTIVE"}, function(s) State.CurrentMode=s; lastHUDKey=nil end)
+local g=section:AddToggle("Гравитация", function(s) State.Settings.useGravity=s end); g(true)
+local d=section:AddToggle("Сопротивление", function(s) State.Settings.useDrag=s end); d(true)
+local j=section:AddToggle("Прыжки", function(s) State.Settings.predictJump=s end); j(true)
+local a=section:AddToggle("Адаптив", function(s) State.Settings.adaptiveLead=s end); a(true)
+local l=section:AddToggle("Lock цели", function(s) State.Settings.targetLock=s end); l(true)
+section:AddButton("Статистика (F9)", function()
+ local s=State.Stats; local ac=s.Shots>0 and string.format("%.1f%%",(s.Hits/s.Shots)*100) or "-"
+ print("══ ULTRA INSTINCT ══  Shots:"..s.Shots.." Hits:"..s.Hits.." Acc:"..ac.." Kills:"..s.Kills.." Deaths:"..s.Deaths.." Streak:"..s.CurrentStreak.."/"..s.BestStreak.." Mode:"..State.CurrentMode)
 end)
 
-local modeNames = {"PRO", "INSTINCT", "SECRETIVE", "ANNIHILATING", "ADAPTIVE"}
-local modeKeys = {"PRO", "INSTINCT", "SECRETIVE", "ANNIHILATING", "ADAPTIVE"}
-section:AddLabel("Выберите ультра-режим:")
-local modeDropdown = section:AddDropdown("Режим", modeNames, function(selected)
-    for i, name in ipairs(modeNames) do
-        if name == selected then
-            State.CurrentMode = modeKeys[i]
-            print("[Ultra Instinct] Режим: " .. name)
-            break
-        end
-    end
-end)
+-- ====== основной цикл: ОДИН Heartbeat, ноль RenderStepped ======
+local _lw=0; local _lastScan=0
+local function tick(dt)
+ if not State.MyRoot or not State.MyRoot.Parent then UpdateCache(); if not State.MyRoot then DecayAdaptive(); return end end
+ CheckHitProxy()
+ local target=FindBestTarget()
+ if not target then State.Target=nil; DecayAdaptive(); return end
+ local mR=GetRoot(target); if not mR then DecayAdaptive(); return end
+ local myR=State.MyRoot; local myP=myR.Position; local mP=mR.Position; local dist=(mP-myP).Magnitude
+ if dist<State.Settings.minDistance or dist>State.Settings.maxDistance then State.Target=nil; DecayAdaptive(); return end
+ local sp,sv=SmoothData(mR,dt); if not sp then return end
+ local rp=LocalPlayer:GetNetworkPing()*1000; if rp<=0 then rp=State.PingSmooth or 60 end; local ping=SmoothPing(rp)
+ local delta=CalculateLead(sp,sv,myP,ping,dist)
+ local lx=clamp(delta.X*.02,-6,6); local ly=clamp(delta.Y*.02,-6,6); local lz=clamp(delta.Z*.02,-6,6)
+ if State.Settings.adaptiveLead then AdaptiveCorrection(delta) end
+ local ad=State.AdaptiveOffset; local mk=State.CurrentMode; local mode=MODES[mk] or MODES.ADAPTIVE
+ if mk=="ADAPTIVE" and mode.auto_switch then
+  if dist<30 then mode=ASUB.CLOSE elseif dist<80 then mode=ASUB.MID elseif dist<150 then mode=ASUB.SNIP else mode=ASUB.DEF end end
+ local mult=State.Settings.leadMultiplier; local vc=State.Settings.verticalCorrection; local speed=sv.Magnitude
+ local hL=clamp((mode.h_base+ping*mode.h_ping+speed*mode.h_speed+lx*2)*mult+ad.x*3,80,500)
+ local vL=clamp((mode.v_base+ping*mode.v_ping+dist*mode.v_dist+ly*2)*vc+ad.y*3,80,450); local yO=0
+ if State.Settings.predictJump then local vs=sv.Y; if vs>3 then vL=vL+35; yO=yO+3 elseif vs<-8 then vL=vL-25; yO=yO-4 end end
+ local sim=clamp(mode.sim_base+speed*mode.sim_speed+abs(lx)*.5+abs(ad.x)*.2,15,130)
+ local intv=clamp(mode.int_base+speed*mode.int_speed-abs(lx)*.3-abs(ad.x)*.1,5,120)
+ local oX=mode.offX+lx*.5+ad.x; local oY=mode.offY+ly*.5+yO+ad.y; local oZ=mode.offZ+lz*.5+ad.z
+ ApplyGPL(floor(sim),floor(intv),floor(oX),floor(oY),floor(oZ),floor(hL),floor(vL))
+end
 
-section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-section:AddLabel("🧪 ФИЗИКА И ПРЕДСКАЗАНИЕ")
-local gravToggle = section:AddToggle("Учёт гравитации", function(state)
-    State.Settings.useGravity = state
-end)
-gravToggle(true)
+track(RunService.Heartbeat:Connect(function(dt)
+ local now=clock()
+ if now-_lastScan>=MURDERER_SCAN then _lastScan=now; UpdateMurdererCache() end  -- один проход ролей на всех
+ HUD_Update(dt)
+ if State.Enabled then
+  local ok,err=pcall(tick,dt)
+  if not ok then if now-_lw>5 then _lw=now; warn("[UltraInstinct] "..tostring(err)) end end
+ end
+end))
 
-local dragToggle = section:AddToggle("Учёт сопротивления", function(state)
-    State.Settings.useDrag = state
-end)
-dragToggle(true)
+track(Players.PlayerRemoving:Connect(function(p)
+ if State.Target==p then State.Target=nil; State.TargetLockTime=0 end
+ if State.MurdererPlayer==p then State.MurdererPlayer=nil end   -- инвалидация кэша
+ State.ThreatMap[p]=nil
+end))
+track(LocalPlayer.CharacterAdded:Connect(function()
+ UpdateCache(); State.Target=nil; State.TargetLockTime=0; State.LastCheck=0; resetSmooth(); lastHUDKey=nil
+end))
 
-local jumpToggle = section:AddToggle("Предсказание прыжков", function(state)
-    State.Settings.predictJump = state
-end)
-jumpToggle(true)
+local function hookChar(char)
+ local hum=char:WaitForChild("Humanoid",5)
+ if hum then track(hum.Died:Connect(function() State.Stats.Deaths=State.Stats.Deaths+1; State.Stats.CurrentStreak=0 end)) end
+ local function hookTool(it) if it:IsA("Tool") then track(it.Activated:Connect(function()
+  if State.Enabled and State.WeaponType=="gun" then State.Stats.Shots=State.Stats.Shots+1; ArmShot(State.Target) end
+ end)) end end
+ for _,it in ipairs(char:GetChildren()) do hookTool(it) end
+ track(char.ChildAdded:Connect(hookTool))
+end
+track(LocalPlayer.CharacterAdded:Connect(hookChar))
+pcall(function() if LocalPlayer.Character then hookChar(LocalPlayer.Character) end end)
 
-section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-section:AddLabel("📊 СТАТИСТИКА (в консоли F9)")
+local function cleanup()
+ State.Enabled=false; for _,c in ipairs(_conns) do pcall(function() c:Disconnect() end) end; _conns={}
+ pcall(function() if HUD.gui then HUD.gui:Destroy() end end)
+ HUD.gui,HUD.label,HUD.stroke,HUD.dot,HUD.hm,HUD.hmH,HUD.hmV=nil,nil,nil,nil,nil,nil,nil
+ lastHUDKey=nil
+ if _G.__UI_CLEANUP==cleanup then _G.__UI_CLEANUP=nil end
+end
+_G.__UI_CLEANUP=cleanup
 
-section:AddButton("Показать статистику", function()
-    local s = State.Stats
-    local acc = s.Shots > 0 and string.format("%.1f%%", (s.Hits/s.Shots)*100) or "0%"
-    local time = os_clock() - s.StartTime
-    print("═══════════════════════════════════════════════════════════")
-    print("  📊 СТАТИСТИКА ULTRA INSTINCT")
-    print("  Выстрелов: " .. s.Shots)
-    print("  Попаданий: " .. s.Hits)
-    print("  Промахов: " .. s.Misses)
-    print("  Точность: " .. acc)
-    print("  Урон: " .. s.TotalDamage)
-    print("  Убийств: " .. s.Kills)
-    print("  Смертей: " .. s.Deaths)
-    print("  Серия: " .. s.CurrentStreak .. " (рекорд: " .. s.BestStreak .. ")")
-    print("  Время работы: " .. string.format("%.1f сек", time))
-    print("  Текущий режим: " .. State.CurrentMode)
-    print("═══════════════════════════════════════════════════════════")
-end)
-
-section:AddButton("Сбросить статистику", function()
-    State.Stats.Shots = 0
-    State.Stats.Hits = 0
-    State.Stats.Misses = 0
-    State.Stats.TotalDamage = 0
-    State.Stats.Kills = 0
-    State.Stats.Deaths = 0
-    State.Stats.Accuracy = 0
-    State.Stats.BestStreak = 0
-    State.Stats.CurrentStreak = 0
-    State.Stats.StartTime = os_time()
-    print("[Ultra Instinct] Статистика сброшена")
-end)
-
-section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-section:AddLabel("СТАТУС: информация в консоли (F9)")
-section:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
--- ====== ОСНОВНОЙ ЦИКЛ ======
-RunService.Heartbeat:Connect(function()
-    if not State.Enabled then return end
-    Optimize()
-
-    if not State.MyRoot or not State.MyRoot.Parent then
-        UpdateCache()
-        if not State.MyRoot then return end
-    end
-
-    local target = FindBestTarget()
-    if not target then
-        State.Target = nil
-        return end
-
-    local mRoot = GetRoot(target)
-    if not mRoot then return end
-
-    local myRoot = State.MyRoot
-    local myPos = myRoot.Position
-    local mPos = mRoot.Position
-    local dist = (mPos - myPos).Magnitude
-
-    if dist < State.Settings.minDistance or dist > State.Settings.maxDistance then
-        State.Target = nil
-        return end
-
-    local smoothPos, smoothVel = SmoothData(mRoot)
-    if not smoothPos then return end
-
-    local rawPing = LocalPlayer:GetNetworkPing() * 1000
-    if rawPing <= 0 then rawPing = State.PingSmooth or 60 end
-    local ping = SmoothPing(rawPing)
-
-    local delta = CalculateLead(smoothPos, smoothVel, myPos, ping, dist)
-    local leadX = math_clamp(delta.X * 0.02, -6, 6)
-    local leadY = math_clamp(delta.Y * 0.02, -6, 6)
-    local leadZ = math_clamp(delta.Z * 0.02, -6, 6)
-
-    if State.Settings.adaptiveLead then
-        State.LastError = delta - State.LastError
-        AdaptiveCorrection(State.LastError)
-    end
-    local adapt = State.AdaptiveOffset
-
-    local modeKey = State.CurrentMode
-    local mode = MODES[modeKey]
-    if not mode then mode = MODES.ADAPTIVE end
-
-    if modeKey == "ADAPTIVE" and mode.auto_switch then
-        if dist < 30 then mode = ADAPTIVE_SUBS.CLOSE
-        elseif dist < 80 then mode = ADAPTIVE_SUBS.MID
-        elseif dist < 150 then mode = ADAPTIVE_SUBS.SNIPER
-        else mode = ADAPTIVE_SUBS.DEF end
-    end
-
-    local mult = State.Settings.leadMultiplier
-    local vertCorr = State.Settings.verticalCorrection
-    local speed = smoothVel.Magnitude
-
-    local hLead = (mode.h_base + ping * mode.h_ping + speed * mode.h_speed + leadX * 2) * mult + adapt.x * 3
-    hLead = math_clamp(hLead, 80, 500)
-
-    local vLead = (mode.v_base + ping * mode.v_ping + dist * mode.v_dist + leadY * 2) * vertCorr + adapt.y * 3
-    vLead = math_clamp(vLead, 80, 450)
-
-    local yOff = 0
-    local vertSpeed = smoothVel.Y
-    if State.Settings.predictJump then
-        if vertSpeed > 3 then
-            vLead = vLead + 35
-            yOff = yOff + 3
-        elseif vertSpeed < -8 then
-            vLead = vLead - 25
-            yOff = yOff - 4
-        end
-    end
-
-    local sim = mode.sim_base + speed * mode.sim_speed + math_abs(leadX) * 0.5 + math_abs(adapt.x) * 0.2
-    sim = math_clamp(sim, 15, 130)
-
-    local interval = mode.int_base + speed * mode.int_speed - math_abs(leadX) * 0.3 - math_abs(adapt.x) * 0.1
-    interval = math_clamp(interval, 5, 120)
-
-    local offX = mode.offX + leadX * 0.5 + adapt.x
-    local offY = mode.offY + leadY * 0.5 + yOff + adapt.y
-    local offZ = mode.offZ + leadZ * 0.5 + adapt.z
-
-    ApplyGPL(
-        math_floor(sim), math_floor(interval),
-        math_floor(offX), math_floor(offY), math_floor(offZ),
-        math_floor(hLead), math_floor(vLead)
-    )
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    if State.Target == player then
-        State.Target = nil
-        State.TargetLockTime = 0
-    end
-    State.ThreatMap[player] = nil
-end)
-
-LocalPlayer.CharacterAdded:Connect(function()
-    UpdateCache()
-    State.Target = nil
-    State.TargetLockTime = 0
-    State.LastCheck = 0
-    State.TargetPosHistory = {}
-    State.TargetVelHistory = {}
-    State.SmoothPos = nil
-    State.SmoothVel = nil
-end)
-
-UpdateCache()
-print("═══════════════════════════════════════════════════════════════════════════════════════")
-print("  ⚡⚡⚡ ULTRA INSTINCT " .. VERSION .. " ⚡⚡⚡")
-print("  🚀 5 УЛЬТРА-РЕЖИМОВ: PRO | INSTINCT | SECRETIVE | ANNIHILATING | ADAPTIVE")
-print("  📌 Статус и статистика в консоли (F9)")
-print("═══════════════════════════════════════════════════════════════════════════════════════")
+UpdateCache(); UpdateMurdererCache(); HUD_Init()
+print("⚡ ULTRA INSTINCT "..VERSION.." loaded (perf: no RenderStepped/GC, cached roles, key-gated HUD).")
