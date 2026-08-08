@@ -1,0 +1,497 @@
+--[[
+    Overdrive-подобный скрипт для Murder Mystery 2
+    Функции:
+    - Auto Farm (сбор монет)
+    - Auto Shoot (авто-стрельба для шерифа)
+    - Kill All (убить всех, будучи убийцей)
+    - ESP (Box, Name, Role, Distance)
+    - Teleports (на спавн, к убийце и т.д.)
+    - No Clip, Fly, Speed
+--]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "OverdriveX"
+Gui.ResetOnSpawn = false
+pcall(function() syn.protect_gui(Gui) end)
+Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Стили
+local colors = {
+    bg = Color3.fromRGB(25,25,25),
+    accent = Color3.fromRGB(255,80,80),
+    text = Color3.fromRGB(240,240,240),
+    btn = Color3.fromRGB(45,45,45)
+}
+
+-- Создание GUI
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 580, 0, 380)
+Main.Position = UDim2.new(0.5, -290, 0.5, -190)
+Main.BackgroundColor3 = colors.bg
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = colors.accent
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = Main
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -60, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Overdrive X | MM2"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TitleBar
+
+local Close = Instance.new("TextButton")
+Close.Size = UDim2.new(0, 30, 0, 30)
+Close.Position = UDim2.new(1, -30, 0, 0)
+Close.BackgroundTransparency = 1
+Close.Text = "✕"
+Close.TextColor3 = Color3.new(1,1,1)
+Close.Font = Enum.Font.GothamBold
+Close.TextSize = 18
+Close.Parent = TitleBar
+Close.MouseButton1Click:Connect(function() Gui:Destroy() end)
+
+-- Вкладки
+local Tabs = {"Main", "ESP", "Teleports", "Settings"}
+local Buttons = {}
+local Pages = {}
+
+local TabFrame = Instance.new("Frame")
+TabFrame.Size = UDim2.new(0, 120, 1, -30)
+TabFrame.Position = UDim2.new(0, 0, 0, 30)
+TabFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+TabFrame.BorderSizePixel = 0
+TabFrame.Parent = Main
+
+for i, name in pairs(Tabs) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, 5 + (i-1)*35)
+    btn.BackgroundColor3 = colors.btn
+    btn.TextColor3 = colors.text
+    btn.Text = name
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
+    btn.Parent = TabFrame
+
+    local page = Instance.new("Frame")
+    page.Size = UDim2.new(1, -120, 1, -30)
+    page.Position = UDim2.new(0, 120, 0, 30)
+    page.BackgroundColor3 = colors.bg
+    page.BorderSizePixel = 0
+    page.Visible = (i == 1)
+    page.Parent = Main
+
+    Buttons[name] = btn
+    Pages[name] = page
+
+    btn.MouseButton1Click:Connect(function()
+        for _, p in pairs(Pages) do p.Visible = false end
+        page.Visible = true
+    end)
+end
+
+-- Возможность перетаскивать окно
+local dragging, dragInput, dragStart, startPos
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        startPos = Main.Position
+        dragStart = input.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Утилиты
+local function getRole(plr)
+    local ls = plr:FindFirstChild("leaderstats")
+    if ls and ls:FindFirstChild("Role") then
+        return ls.Role.Value
+    end
+    return "Innocent"
+end
+
+local function getMurderer()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and getRole(plr) == "Murderer" then
+            return plr
+        end
+    end
+    return nil
+end
+
+local function getSheriff()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and getRole(plr) == "Sheriff" then
+            return plr
+        end
+    end
+    return nil
+end
+
+-- === Главная вкладка (Main) ===
+local mainPage = Pages["Main"]
+local yPos = 10
+
+local function addToggle(page, text, callback)
+    local toggle = Instance.new("Frame")
+    toggle.Size = UDim2.new(1, -20, 0, 30)
+    toggle.Position = UDim2.new(0, 10, 0, yPos)
+    toggle.BackgroundTransparency = 1
+    toggle.Parent = page
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = colors.text
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = toggle
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 40, 0, 24)
+    btn.Position = UDim2.new(1, -45, 0.5, -12)
+    btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    btn.Text = "OFF"
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.BorderSizePixel = 0
+    btn.Parent = toggle
+
+    local enabled = false
+    btn.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        btn.Text = enabled and "ON" or "OFF"
+        btn.BackgroundColor3 = enabled and colors.accent or Color3.fromRGB(80,80,80)
+        callback(enabled)
+    end)
+    yPos = yPos + 35
+    return toggle
+end
+
+-- Auto Farm
+local autoFarm = false
+addToggle(mainPage, "Auto Farm Coins", function(v) autoFarm = v end)
+
+-- Auto Shoot
+local autoShoot = false
+addToggle(mainPage, "Auto Shoot (Sheriff)", function(v) autoShoot = v end)
+
+-- Kill All
+local killAll = false
+local killAllBtn = Instance.new("TextButton")
+killAllBtn.Size = UDim2.new(1, -20, 0, 30)
+killAllBtn.Position = UDim2.new(0, 10, 0, yPos)
+killAllBtn.BackgroundColor3 = colors.accent
+killAllBtn.Text = "KILL ALL (MURDERER)"
+killAllBtn.TextColor3 = Color3.new(1,1,1)
+killAllBtn.Font = Enum.Font.GothamBold
+killAllBtn.TextSize = 14
+killAllBtn.Parent = mainPage
+killAllBtn.MouseButton1Click:Connect(function()
+    if getRole(LocalPlayer) == "Murderer" then
+        killAll = true
+        task.spawn(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local knife = LocalPlayer.Backpack:FindFirstChild("Knife") or LocalPlayer.Character:FindFirstChild("Knife")
+                    if knife and knife:IsA("Tool") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = plr.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,2)
+                        task.wait(0.05)
+                        knife:Activate()
+                        task.wait(0.1)
+                    end
+                end
+            end
+            killAll = false
+        end)
+    end
+end)
+yPos = yPos + 40
+
+-- === ESP вкладка ===
+local espPage = Pages["ESP"]
+yPos = 10
+
+local espEnabled = false
+local boxEsp = false
+local nameEsp = false
+local roleEsp = false
+local distEsp = false
+
+addToggle(espPage, "Enable ESP", function(v) espEnabled = v end)
+addToggle(espPage, "Box ESP", function(v) boxEsp = v end)
+addToggle(espPage, "Name ESP", function(v) nameEsp = v end)
+addToggle(espPage, "Role ESP", function(v) roleEsp = v end)
+addToggle(espPage, "Distance ESP", function(v) distEsp = v end)
+
+-- ESP визуализация через Drawing
+local drawings = {}
+local function clearESP()
+    for _, d in pairs(drawings) do
+        pcall(function() d:Remove() end)
+    end
+    table.clear(drawings)
+end
+
+RunService.RenderStepped:Connect(function()
+    clearESP()
+    if not espEnabled then return end
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
+        local char = plr.Character
+        if not char or not char:FindFirstChild("Head") then continue end
+        local head = char.Head
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local pos, visible = Camera:WorldToViewportPoint(head.Position)
+        if not visible then continue end
+
+        local role = getRole(plr)
+        local dist = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position - head.Position).Magnitude
+
+        -- Box
+        if boxEsp then
+            local box = Drawing.new("Square")
+            box.Visible = true
+            box.Color = role == "Murderer" and Color3.new(1,0,0) or role == "Sheriff" and Color3.new(0,0,1) or Color3.new(1,1,1)
+            box.Thickness = 1.5
+            box.Size = Vector2.new(2000/(dist+50), 4000/(dist+50))
+            box.Position = Vector2.new(pos.X - box.Size.X/2, pos.Y - box.Size.Y/2)
+            table.insert(drawings, box)
+        end
+
+        -- Name
+        if nameEsp then
+            local text = Drawing.new("Text")
+            text.Visible = true
+            text.Text = plr.Name
+            text.Color = Color3.new(1,1,1)
+            text.Size = 14
+            text.Position = Vector2.new(pos.X, pos.Y - 50)
+            text.Center = true
+            table.insert(drawings, text)
+        end
+
+        -- Role
+        if roleEsp then
+            local text = Drawing.new("Text")
+            text.Visible = true
+            text.Text = "["..role.."]"
+            text.Color = role == "Murderer" and Color3.new(1,0.3,0.3) or role == "Sheriff" and Color3.new(0.3,0.5,1) or Color3.new(0.8,0.8,0.8)
+            text.Size = 13
+            text.Position = Vector2.new(pos.X, pos.Y - 35)
+            text.Center = true
+            table.insert(drawings, text)
+        end
+
+        -- Distance
+        if distEsp then
+            local text = Drawing.new("Text")
+            text.Visible = true
+            text.Text = math.floor(dist).." studs"
+            text.Color = Color3.new(1,1,1)
+            text.Size = 13
+            text.Position = Vector2.new(pos.X, pos.Y - 20)
+            text.Center = true
+            table.insert(drawings, text)
+        end
+    end
+end)
+
+-- === Teleports ===
+local tpPage = Pages["Teleports"]
+yPos = 10
+
+local function addTeleport(text, pos)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 28)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = colors.btn
+    btn.Text = text
+    btn.TextColor3 = colors.text
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.Parent = tpPage
+    btn.MouseButton1Click:Connect(function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
+        end
+    end)
+    yPos = yPos + 33
+end
+
+-- Спавн (позиция по умолчанию 0,0,0 или из SpawnLocation)
+local spawnPos = Vector3.zero
+for _, obj in pairs(workspace:GetChildren()) do
+    if obj:IsA("SpawnLocation") then
+        spawnPos = obj.Position
+        break
+    end
+end
+addTeleport("Spawn", spawnPos)
+addTeleport("To Murderer", nil) -- обработаем отдельно
+local toMurdererBtn = tpPage:FindFirstChild("TextButton") -- последняя кнопка
+if toMurdererBtn and toMurdererBtn.Text == "To Murderer" then
+    toMurdererBtn.MouseButton1Click:Connect(function()
+        local mur = getMurderer()
+        if mur and mur.Character and mur.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = mur.Character.HumanoidRootPart.CFrame * CFrame.new(0,2,0)
+        end
+    end)
+end
+
+-- === Settings ===
+local settPage = Pages["Settings"]
+yPos = 10
+
+local noclip = false
+addToggle(settPage, "NoClip", function(v)
+    noclip = v
+    if v then
+        task.spawn(function()
+            while noclip do
+                if LocalPlayer.Character then
+                    for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    end
+end)
+
+local flyEnabled = false
+local flySpeed = 50
+addToggle(settPage, "Fly (E to up, Q to down)", function(v)
+    flyEnabled = v
+    if v then
+        task.spawn(function()
+            local bodyGyro, bodyVel
+            repeat
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local root = LocalPlayer.Character.HumanoidRootPart
+                    if not bodyGyro then
+                        bodyGyro = Instance.new("BodyGyro")
+                        bodyGyro.P = 9e4
+                        bodyGyro.Parent = root
+                    end
+                    if not bodyVel then
+                        bodyVel = Instance.new("BodyVelocity")
+                        bodyVel.Velocity = Vector3.zero
+                        bodyVel.MaxForce = Vector3.new(9e4,9e4,9e4)
+                        bodyVel.Parent = root
+                    end
+                    bodyGyro.CFrame = Camera.CFrame
+                    local dir = Vector3.zero
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + Camera.CFrame.LookVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - Camera.CFrame.LookVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - Camera.CFrame.RightVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + Camera.CFrame.RightVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.E) then dir = dir + Vector3.new(0,1,0) end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Q) then dir = dir - Vector3.new(0,1,0) end
+                    bodyVel.Velocity = dir * flySpeed
+                    root.Anchored = false
+                end
+                task.wait()
+            until not flyEnabled
+            if bodyGyro then bodyGyro:Destroy() end
+            if bodyVel then bodyVel:Destroy() end
+        end)
+    end
+end)
+
+local speedHack = false
+local speedValue = 30
+addToggle(settPage, "Speed Hack (x2)", function(v)
+    speedHack = v
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum then
+        hum.WalkSpeed = speedHack and speedValue or 16
+    end
+end)
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if speedHack then
+        local hum = char:WaitForChild("Humanoid")
+        hum.WalkSpeed = speedValue
+    end
+end)
+
+-- === Рабочие циклы ===
+-- Auto Farm
+task.spawn(function()
+    while task.wait(0.2) do
+        if autoFarm and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local root = LocalPlayer.Character.HumanoidRootPart
+            local nearest, nearDist = nil, math.huge
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj.Name == "Coin" or obj.Name == "Loot" then
+                    local pos = obj.Position
+                    local dist = (root.Position - pos).Magnitude
+                    if dist < nearDist then
+                        nearDist = dist
+                        nearest = obj
+                    end
+                end
+            end
+            if nearest then
+                root.CFrame = CFrame.new(nearest.Position + Vector3.new(0,3,0))
+                task.wait(0.05)
+            end
+        end
+    end
+end)
+
+-- Auto Shoot (для шерифа)
+task.spawn(function()
+    while task.wait(0.15) do
+        if autoShoot and getRole(LocalPlayer) == "Sheriff" then
+            local mur = getMurderer()
+            if mur and mur.Character and mur.Character:FindFirstChild("Head") then
+                local gun = LocalPlayer.Backpack:FindFirstChild("Gun") or LocalPlayer.Character:FindFirstChild("Gun")
+                if gun and gun:IsA("Tool") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.lookAt(LocalPlayer.Character.HumanoidRootPart.Position, mur.Character.Head.Position)
+                    task.wait(0.05)
+                    gun:Activate()
+                    -- Альтернатива через Remote
+                    -- local rem = game.ReplicatedStorage:FindFirstChild("ShootEvent") or game.ReplicatedStorage:FindFirstChild("Fire")
+                    -- if rem then rem:FireServer() end
+                end
+            end
+        end
+    end
+end)
+
+print("Overdrive X for MM2 loaded!")
