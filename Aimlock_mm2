@@ -1,4 +1,4 @@
--- MM2 Murderer Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP
+-- MM2 Murderer Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP + GRAB GUN
 -- FIXED: Автообновление после раунда
 -- FIXED: Ускоренное обновление Outline
 -- FIXED: Мгновенное появление Outline при входе игрока
@@ -7,6 +7,7 @@
 -- FIXED: Авто-получение бомб включено по умолчанию
 -- ADDED: WallHop система (флинг при прыжке возле стыка стен)
 -- FIXED: Кнопка WallHop теперь работает корректно
+-- ADDED: Grab Gun система (захват оружия)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -296,6 +297,130 @@ local function SetupWallHop()
 end
 
 -- ==============================================
+-- GRAB GUN СИСТЕМА
+-- ==============================================
+
+-- Функция для захвата оружия (grab gun)
+local function GrabGun()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    -- Ищем оружие рядом
+    local nearestGun = nil
+    local nearestDist = 15
+    
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj:IsA("Tool") then
+            local name = obj.Name:lower()
+            if name:find("gun") or name:find("pistol") or name:find("revolver") or 
+               name:find("shotgun") or name:find("rifle") or name:find("weapon") or
+               name:find("blaster") or name:find("shooter") or name:find("knife") then
+                local dist = (obj.Position - hrp.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearestGun = obj
+                end
+            end
+        end
+    end
+    
+    if nearestGun then
+        -- Захватываем оружие (телепортируем к игроку)
+        nearestGun.Parent = LocalPlayer.Backpack or character
+        nearestGun.CFrame = hrp.CFrame * CFrame.new(0, 0, 3)
+        Notify("Grab Gun", "Оружие захвачено: " .. nearestGun.Name, 2)
+        return nearestGun
+    else
+        Notify("Grab Gun", "Оружие рядом не найдено!", 2)
+        return nil
+    end
+end
+
+-- Функция для захвата оружия у другого игрока
+local function GrabGunFromPlayer(targetPlayer)
+    if not targetPlayer then return end
+    
+    local targetChar = targetPlayer.Character
+    if not targetChar then return end
+    
+    -- Ищем оружие у игрока
+    local targetGun = nil
+    for _, tool in ipairs(targetChar:GetChildren()) do
+        if tool:IsA("Tool") then
+            local name = tool.Name:lower()
+            if name:find("gun") or name:find("pistol") or name:find("revolver") or 
+               name:find("shotgun") or name:find("rifle") or name:find("weapon") or
+               name:find("blaster") or name:find("shooter") or name:find("knife") then
+                targetGun = tool
+                break
+            end
+        end
+    end
+    
+    if targetGun then
+        -- Забираем оружие у игрока
+        targetGun.Parent = LocalPlayer.Backpack or LocalPlayer.Character
+        Notify("Grab Gun", "Оружие забрано у " .. targetPlayer.Name, 2)
+        return targetGun
+    else
+        Notify("Grab Gun", "У игрока нет оружия!", 2)
+        return nil
+    end
+end
+
+-- Функция для поиска игрока с оружием и захвата
+local function FindAndGrabGun()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local nearestPlayer = nil
+    local nearestDist = 20
+    local targetGun = nil
+    
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local targetChar = plr.Character
+            local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
+            if targetHrp then
+                local dist = (targetHrp.Position - hrp.Position).Magnitude
+                if dist < nearestDist then
+                    -- Проверяем наличие оружия
+                    for _, tool in ipairs(targetChar:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            local name = tool.Name:lower()
+                            if name:find("gun") or name:find("pistol") or name:find("revolver") or 
+                               name:find("shotgun") or name:find("rifle") or name:find("weapon") or
+                               name:find("blaster") or name:find("shooter") or name:find("knife") then
+                                nearestDist = dist
+                                nearestPlayer = plr
+                                targetGun = tool
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    if nearestPlayer and targetGun then
+        -- Забираем оружие
+        targetGun.Parent = LocalPlayer.Backpack or character
+        Notify("Grab Gun", "Оружие забрано у " .. nearestPlayer.Name, 2)
+        return targetGun
+    else
+        -- Если нет игрока с оружием, ищем на земле
+        return GrabGun()
+    end
+end
+
+-- ==============================================
 -- СОЗДАНИЕ ГЛАВНОГО GUI
 -- ==============================================
 local function CreateMainGUI()
@@ -417,6 +542,12 @@ local __WALLHOP_COLOR = ColorSequence.new({
     ColorSequenceKeypoint.new(0,   __RGB(255, 0, 255)),
     ColorSequenceKeypoint.new(0.6, __RGB(200, 0, 200)),
     ColorSequenceKeypoint.new(1,   __RGB(150, 0, 150))
+})
+
+local __GRAB_GUN_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 165, 0)),
+    ColorSequenceKeypoint.new(0.6, __RGB(255, 140, 0)),
+    ColorSequenceKeypoint.new(1,   __RGB(200, 100, 0))
 })
 
 local __GOLD_NORMAL_COLOR = ColorSequence.new({
@@ -576,6 +707,8 @@ function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType, cust
         Stroke.Color = __GOLD_BOMB_COLOR
     elseif colorType == "wallhop" then
         Stroke.Color = __WALLHOP_COLOR
+    elseif colorType == "grabgun" then
+        Stroke.Color = __GRAB_GUN_COLOR
     else
         Stroke.Color = __NORMAL_COLOR
     end
@@ -653,6 +786,8 @@ function BindableButtons.UpdateBButtonColor(id, isActive, colorType)
                 stroke.Color = __GOLD_BOMB_COLOR
             elseif colorType == "wallhop" then
                 stroke.Color = __WALLHOP_COLOR
+            elseif colorType == "grabgun" then
+                stroke.Color = __GRAB_GUN_COLOR
             else
                 stroke.Color = __NORMAL_COLOR
             end
@@ -1615,7 +1750,7 @@ end
 -- ==============================================
 local function CreateConsoleMenu()
     print("=" .. string.rep("=", 40))
-    print("  🎯 MM2 AIMLOCK V2.6 | OUTLINE | BOMB JUMP+ | WALLHOP")
+    print("  🎯 MM2 AIMLOCK V2.6 | OUTLINE | BOMB JUMP+ | WALLHOP | GRAB GUN")
     print("=" .. string.rep("=", 40))
     print("  [1] Toggle Aim Lock    [Currently: " .. (AimLockEnabled and "ON" or "OFF") .. "]")
     print("  [2] Toggle Wall Check  [Currently: " .. (WallCheckEnabled and "ON" or "OFF") .. "]")
@@ -1636,6 +1771,7 @@ local function CreateConsoleMenu()
     print("🔄 Outline обновляется каждые 0.05 сек")
     print("⚡ Outline появляется МГНОВЕННО при входе игрока")
     print("🧱 WallHop: Флинг при прыжке возле стыка стен")
+    print("🔫 Grab Gun: Захват оружия с земли или у игроков")
 end
 
 -- ==============================================
@@ -1715,6 +1851,35 @@ local function ToggleGoldBomb()
     end
 end
 
+-- ==============================================
+-- КНОПКИ GRAB GUN
+-- ==============================================
+local function CreateGrabGunButtons()
+    -- Кнопка для захвата оружия
+    if not BindableButtons.Buttons["grab_gun"] then
+        BindableButtons.AddBButton("grab_gun", "🔫", function()
+            local gun = FindAndGrabGun()
+            if gun then
+                print("✅ Оружие захвачено: " .. gun.Name)
+            end
+        end, false, "grabgun")
+        
+        local btn = BindableButtons.Buttons["grab_gun"]
+        if btn then
+            local screen = Workspace.CurrentCamera.ViewportSize
+            btn.Size = __UD2(0.10 * (screen.Y / screen.X), 0, 0.10, 0)
+            local textLabel = btn:FindFirstChild("@Text")
+            if textLabel then
+                textLabel.Text = "Grab"
+                textLabel.TextSize = 10
+            end
+        end
+    end
+end
+
+-- ==============================================
+-- СОЗДАНИЕ ВСЕХ КНОПОК
+-- ==============================================
 local function CreateButtons()
     if not BindableButtons.Buttons["aim_toggle"] then
         BindableButtons.AddBButton("aim_toggle", "Aim:OFF", function()
@@ -1764,6 +1929,9 @@ local function CreateButtons()
         end
     end
     
+    -- Создаем кнопку Grab Gun
+    CreateGrabGunButtons()
+    
     UpdateAimButtonState()
     UpdateWallButtonState()
     UpdateOutlineButtonState()
@@ -1775,12 +1943,13 @@ local function DeleteButtons()
     BindableButtons.DeleteBButton("wall_toggle")
     BindableButtons.DeleteBButton("outline_toggle")
     BindableButtons.DeleteBButton("wallhop_toggle")
+    BindableButtons.DeleteBButton("grab_gun")
     BindableButtons.DeleteBButton("bombjump_bind")
     BindableButtons.DeleteBButton("goldbombjump_bind")
 end
 
 local function ToggleButtonsVisibility()
-    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle", "wallhop_toggle", "bombjump_bind", "goldbombjump_bind"}) do
+    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle", "wallhop_toggle", "grab_gun", "bombjump_bind", "goldbombjump_bind"}) do
         local btn = BindableButtons.Buttons[id]
         if btn then
             btn.Visible = ShowBindableButton
@@ -1818,9 +1987,51 @@ local function SetupKeybinds()
         if input.KeyCode == Enum.KeyCode.H then
             ToggleWallHop()
         end
+        
+        if input.KeyCode == Enum.KeyCode.G then
+            local gun = FindAndGrabGun()
+            if gun then
+                print("✅ Оружие захвачено: " .. gun.Name)
+            end
+        end
     end)
     
     RootMaid:GiveTask(inputBeganConnection)
+end
+
+-- ==============================================
+-- ДОБАВЛЕНИЕ СЕКЦИИ GRAB GUN В МЕНЮ
+-- ==============================================
+local function AddGrabGunSection()
+    local grabSection = shared.AddSection("Grab Gun")
+    grabSection:AddLabel("Захват оружия")
+    
+    grabSection:AddButton("Найти и захватить оружие", function()
+        local gun = FindAndGrabGun()
+        if gun then
+            print("✅ Оружие захвачено: " .. gun.Name)
+        else
+            print("❌ Оружие не найдено")
+        end
+    end)
+    
+    grabSection:AddButton("Захватить оружие с земли", function()
+        local gun = GrabGun()
+        if gun then
+            print("✅ Оружие подобрано: " .. gun.Name)
+        else
+            print("❌ Оружие не найдено")
+        end
+    end)
+    
+    grabSection:AddPlayerDropdown("Захватить оружие у игрока", function(player)
+        if player then
+            local gun = GrabGunFromPlayer(player)
+            if gun then
+                print("✅ Оружие забрано у " .. player.Name)
+            end
+        end
+    end)
 end
 
 -- ==============================================
@@ -1832,6 +2043,12 @@ SetupKeybinds()
 
 -- Запускаем WallHop
 SetupWallHop()
+
+-- Добавляем секцию Grab Gun
+task.spawn(function()
+    task.wait(0.5)
+    AddGrabGunSection()
+end)
 
 -- ==============================================
 -- ПРИВЯЗКА AIMLOCK К RENDERSTEP
@@ -1867,13 +2084,14 @@ end)
 -- ==============================================
 -- ВЫВОД МЕНЮ
 -- ==============================================
-print("✅ MM2 Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP Loaded!")
+print("✅ MM2 Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP + GRAB GUN Loaded!")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🎯 ЧЕТЫРЕ КНОПКИ НА ЭКРАНЕ:")
+print("🎯 ПЯТЬ КНОПОК НА ЭКРАНЕ:")
 print("  🔵 Aim:ON/OFF  -  Вкл/Выкл автонаведение")
 print("  🔵 Wall:ON/OFF -  Вкл/Выкл проверку видимости")
 print("  🔴 OL:ON/OFF   -  Вкл/Выкл Outline подсветку")
 print("  🟣 WH:ON/OFF   -  Вкл/Выкл WallHop (флинг у стен)")
+print("  🟠 Grab:ON/OFF -  Захват оружия с земли или у игроков")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("💣 BOMB JUMP+ КНОПКИ (РАЗМЕР 18):")
 print("  🟡 BJ - Обычная бомба (кулдаун 22с) [АВТО-ПОЛУЧЕНИЕ ВКЛ]")
@@ -1899,10 +2117,12 @@ print("  [B] - Toggle Bomb Jump")
 if goldBombJump then
     print("  [Z] - Toggle Gold Bomb Jump")
 end
+print("  [G] - Grab Gun (захват оружия)")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("💡 Bomb Jump: Нажмите на экран в воздухе с бомбой в руках")
 print("💡 Auto-Get: Бомба автоматически выдаётся при старте и респавне")
 print("🧱 WallHop: Зажмите пробел у стены для флинга при смене стыка")
+print("🔫 Grab Gun: Захватывает оружие с земли или у ближайшего игрока")
 CreateConsoleMenu()
 
 _G.MM2AimMenu = CreateConsoleMenu
@@ -1912,6 +2132,7 @@ _G.MM2Outline = ToggleOutline
 _G.MM2BombJump = ToggleBombJump
 _G.MM2GoldBomb = ToggleGoldBomb
 _G.MM2WallHop = ToggleWallHop
+_G.MM2GrabGun = FindAndGrabGun
 
 print("🔧 Type 'MM2AimMenu()' to show menu")
 print("🔧 Type 'MM2Toggle()' to toggle aim")
@@ -1922,3 +2143,4 @@ if goldBombJump then
     print("🔧 Type 'MM2GoldBomb()' to toggle gold bomb jump")
 end
 print("🔧 Type 'MM2WallHop()' to toggle wallhop")
+print("🔧 Type 'MM2GrabGun()' to grab gun")ы
