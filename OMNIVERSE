@@ -1,11 +1,11 @@
 --[[
     ═══════════════════════════════════════════════════════════
-    🔥 OMEGA ULTIMATE v5.3 - МОНОХРОМНАЯ ВЕРСИЯ 🔥
+    🔥 OMEGA ULTIMATE v5.3 - УЛУЧШЕННЫЙ СТИЛЬ 🔥
     ═══════════════════════════════════════════════════════════
-    ИСПРАВЛЕНО:
-    • GUI не закрывается при нажатии на него
-    • Монохромный стиль (черно-бело-серый)
-    • Кнопка всегда видима
+    ОСОБЕННОСТИ:
+    • Кнопка в стиле вашего экрана
+    • Широкое меню (450px)
+    • Монохромный стиль
     • Полная стабильность
     ═══════════════════════════════════════════════════════════
 ]]
@@ -51,16 +51,16 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ═══════════════════════════════════════════════════════════
--- КНОПКА ОТКРЫТИЯ (МОНОХРОМ)
+-- КНОПКА ОТКРЫТИЯ (СТИЛЬ КАК НА ВАШЕМ ЭКРАНЕ)
 -- ═══════════════════════════════════════════════════════════
 
 local OpenButton = Instance.new("ImageButton")
 OpenButton.Size = UDim2.new(0, 55, 0, 55)
 OpenButton.Position = UDim2.new(0.02, 0, 0.86, 0)
-OpenButton.BackgroundColor3 = COLORS.bgSecondary
+OpenButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 OpenButton.BackgroundTransparency = 0
 OpenButton.Image = "rbxassetid://6031091071"
-OpenButton.ImageColor3 = COLORS.textBright
+OpenButton.ImageColor3 = Color3.fromRGB(0, 0, 0)
 OpenButton.ScaleType = Enum.ScaleType.Fit
 OpenButton.Parent = ScreenGui
 
@@ -68,28 +68,13 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
-local OpenStroke = Instance.new("UIStroke")
-OpenStroke.Color = COLORS.border
-OpenStroke.Thickness = 2
-OpenStroke.Transparency = 0.2
-OpenStroke.Parent = OpenButton
-
-local OpenLabel = Instance.new("TextLabel")
-OpenLabel.Size = UDim2.new(1, 0, 1, 0)
-OpenLabel.BackgroundTransparency = 1
-OpenLabel.Text = "⚡"
-OpenLabel.TextColor3 = COLORS.textBright
-OpenLabel.TextSize = 26
-OpenLabel.Font = Enum.Font.Jura
-OpenLabel.Parent = OpenButton
-
 -- ═══════════════════════════════════════════════════════════
--- ГЛАВНОЕ МЕНЮ (МОНОХРОМ)
+-- ГЛАВНОЕ МЕНЮ (ШИРОКОЕ - 450px)
 -- ═══════════════════════════════════════════════════════════
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 460)
-MainFrame.Position = UDim2.new(0.5, -180, 0.5, -230)
+MainFrame.Size = UDim2.new(0, 450, 0, 460)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -230)
 MainFrame.BackgroundColor3 = COLORS.bg
 MainFrame.BackgroundTransparency = 0
 MainFrame.BorderSizePixel = 0
@@ -145,11 +130,11 @@ CloseBtn.Font = Enum.Font.Jura
 CloseBtn.Parent = TitleFrame
 
 -- ═══════════════════════════════════════════════════════════
--- КОНТЕЙНЕРЫ
+-- КОНТЕЙНЕРЫ (УВЕЛИЧЕНЫ)
 -- ═══════════════════════════════════════════════════════════
 
 local CategoryContainer = Instance.new("ScrollingFrame")
-CategoryContainer.Size = UDim2.new(0, 100, 1, -45)
+CategoryContainer.Size = UDim2.new(0, 120, 1, -45)
 CategoryContainer.Position = UDim2.new(0, 0, 0, 45)
 CategoryContainer.BackgroundTransparency = 1
 CategoryContainer.BorderSizePixel = 0
@@ -159,8 +144,8 @@ CategoryContainer.ScrollBarImageColor3 = COLORS.textDim
 CategoryContainer.Parent = MainFrame
 
 local FunctionContainer = Instance.new("ScrollingFrame")
-FunctionContainer.Size = UDim2.new(1, -105, 1, -45)
-FunctionContainer.Position = UDim2.new(0, 105, 0, 45)
+FunctionContainer.Size = UDim2.new(1, -125, 1, -45)
+FunctionContainer.Position = UDim2.new(0, 125, 0, 45)
 FunctionContainer.BackgroundTransparency = 1
 FunctionContainer.BorderSizePixel = 0
 FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -213,7 +198,7 @@ local function CreateCategoryButton(name, parent)
     btn.BackgroundTransparency = 1
     btn.Text = name
     btn.TextColor3 = COLORS.textDim
-    btn.TextSize = 11
+    btn.TextSize = 12
     btn.Font = Enum.Font.Jura
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = parent
@@ -289,7 +274,7 @@ function _G.Menu:AddLabel(text, category)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = COLORS.textDim
-    label.TextSize = 11
+    label.TextSize = 12
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = parent
@@ -325,7 +310,7 @@ function _G.Menu:AddToggle(text, callback, category)
     container.Parent = parent
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Size = UDim2.new(0.65, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = COLORS.text
@@ -489,7 +474,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     container.Parent = parent
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.4, 0, 1, 0)
+    label.Size = UDim2.new(0.35, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = COLORS.text
@@ -499,8 +484,8 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     label.Parent = container
     
     local dropdown = Instance.new("TextButton")
-    dropdown.Size = UDim2.new(0.55, 0, 1, 0)
-    dropdown.Position = UDim2.new(0.45, 0, 0, 0)
+    dropdown.Size = UDim2.new(0.6, 0, 1, 0)
+    dropdown.Position = UDim2.new(0.4, 0, 0, 0)
     dropdown.BackgroundColor3 = COLORS.bgSecondary
     dropdown.BackgroundTransparency = 0
     dropdown.Text = options[1] or "Select"
@@ -524,8 +509,8 @@ function _G.Menu:AddDropdown(text, options, callback, category)
         end
         
         dropList = Instance.new("Frame")
-        dropList.Size = UDim2.new(0.55, 0, 0, #options * 25)
-        dropList.Position = UDim2.new(0.45, 0, 1, 2)
+        dropList.Size = UDim2.new(0.6, 0, 0, #options * 25)
+        dropList.Position = UDim2.new(0.4, 0, 1, 2)
         dropList.BackgroundColor3 = COLORS.bgSecondary
         dropList.BackgroundTransparency = 0
         dropList.ClipsDescendants = true
@@ -562,24 +547,17 @@ function _G.Menu:AddDropdown(text, options, callback, category)
 end
 
 -- ═══════════════════════════════════════════════════════════
--- ОТКРЫТИЕ/ЗАКРЫТИЕ (ФИКС)
+-- ОТКРЫТИЕ/ЗАКРЫТИЕ
 -- ═══════════════════════════════════════════════════════════
 
 local function ToggleMenu()
     _G.Menu.IsOpen = not _G.Menu.IsOpen
     MainFrame.Visible = _G.Menu.IsOpen
-    OpenButton.Visible = true -- Всегда видима
+    OpenButton.Visible = true
 end
 
 OpenButton.Activated:Connect(ToggleMenu)
 CloseBtn.Activated:Connect(ToggleMenu)
-
--- ═══════════════════════════════════════════════════════════
--- ЗАКРЫТИЕ ТОЛЬКО ПО КНОПКЕ ИЛИ ВНЕ GUI
--- ═══════════════════════════════════════════════════════════
-
--- Отключаем закрытие по нажатию на пустое место (убран баг)
--- Вместо этого добавляем возможность закрыть только крестиком или повторным нажатием на кнопку
 
 -- ═══════════════════════════════════════════════════════════
 -- ИНИЦИАЛИЗАЦИЯ
@@ -590,10 +568,10 @@ _G.Menu:AddCategory("🎯 Цели")
 _G.Menu:AddCategory("⚙️ Настройки")
 _G.Menu:AddCategory("📊 Инфо")
 
-_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
+_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 _G.Menu:AddLabel("OMEGA ULTIMATE v5.3", "📊 Инфо")
-_G.Menu:AddLabel("📱 Монохромная версия", "📊 Инфо")
-_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
+_G.Menu:AddLabel("📱 Улучшенный стиль", "📊 Инфо")
+_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 
 -- ДЕМО-ФУНКЦИИ
 _G.Menu:AddToggle("Демо-функция", function(state)
@@ -613,7 +591,7 @@ _G.Menu:AddDropdown("Режим", {"Режим A", "Режим B", "Режим C
 end, "⚙️ Настройки")
 
 print("════════════════════════════════════════════════════════")
-print("⚡ OMEGA MENU v5.3 - МОНОХРОМНАЯ ВЕРСИЯ")
-print("📱 Нажмите ⚡ кнопку для открытия/закрытия")
-print("❌ Закрытие только через крестик или кнопку ⚡")
+print("⚡ OMEGA MENU v5.3 - УЛУЧШЕННЫЙ СТИЛЬ")
+print("📱 Кнопка в стиле вашего экрана")
+print("📐 Меню стало шире (450px)")
 print("════════════════════════════════════════════════════════")
