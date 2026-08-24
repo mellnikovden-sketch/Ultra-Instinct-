@@ -39,7 +39,7 @@ local function CreateResetGUI()
     gui.Name = "MM2_Reset_GUI"
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Enabled = false -- Скрыто по умолчанию
+    gui.Enabled = false
     
     local parent = CoreGui
     pcall(function()
@@ -114,7 +114,7 @@ local __PCLR = Color3.new
 local __RGB  = Color3.fromRGB
 
 -- ==============================================
--- BINDABLE BUTTONS (Основные кнопки)
+-- BINDABLE BUTTONS
 -- ==============================================
 local BindableButtons = {Buttons = {}, Maids = {}, Count = 0}
 
@@ -1512,7 +1512,7 @@ WallhopMaid:GiveTask(UserInputService.WindowFocused:Connect(function()
 end))
 
 -- ==============================================
--- RESET PLAYER СИСТЕМА (187 Reset) - ОТДЕЛЬНОЕ GUI
+-- RESET PLAYER СИСТЕМА (187 Reset)
 -- ==============================================
 local ResetState = {
     noclipEnabled = false,
@@ -1930,31 +1930,30 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ ДЛЯ RESET GUI (ИСПРАВЛЕННАЯ)
+-- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ ДЛЯ RESET GUI
 -- ==============================================
 local function MakeResetGuiDraggable(frame)
     local dragging = false
     local dragStart = nil
     local startPos = nil
-    local connection = nil
     
-    local function onInputBegan(input)
+    frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or 
            input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
         end
-    end
+    end)
     
-    local function onInputEnded(input)
+    frame.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or 
            input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
-    end
+    end)
     
-    local function onInputChanged(input)
+    __UIS.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
                          input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
@@ -1966,22 +1965,18 @@ local function MakeResetGuiDraggable(frame)
                 0
             )
         end
-    end
-    
-    frame.InputBegan:Connect(onInputBegan)
-    frame.InputEnded:Connect(onInputEnded)
-    __UIS.InputChanged:Connect(onInputChanged)
+    end)
 end
 
 -- ==============================================
--- СОЗДАНИЕ ОТДЕЛЬНОГО GUI ДЛЯ RESET (С ПЕРЕТАСКИВАНИЕМ)
+-- СОЗДАНИЕ ОТДЕЛЬНОГО GUI ДЛЯ RESET
 -- ==============================================
 local function CreateResetGUIElements()
-    -- Главный фрейм (опущен ниже - Y позиция 0.6)
+    -- Главный фрейм (позиция 0.9)
     local frame = Instance.new("Frame")
     frame.Name = "ResetMainFrame"
-    frame.Size = __UD2(0, 350, 0, 450)
-    frame.Position = __UD2(0.5, -175, 0.6, -225) -- Опущено ниже
+    frame.Size = __UD2(0, 350, 0, 480)
+    frame.Position = __UD2(0.5, -175, 0.9, -240) -- Позиция 0.9
     frame.AnchorPoint = __V2(0.5, 0.5)
     frame.BackgroundColor3 = __RGB(20, 20, 30)
     frame.BackgroundTransparency = 0.05
@@ -1989,10 +1984,9 @@ local function CreateResetGUIElements()
     frame.ClipsDescendants = true
     frame.Parent = ResetGUI
     
-    -- Скругление углов
     Instance.new("UICorner", frame).CornerRadius = __UD(0, 8)
     
-    -- Заголовок (для перетаскивания)
+    -- Заголовок
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Size = __UD2(1, 0, 0, 35)
@@ -2002,7 +1996,6 @@ local function CreateResetGUIElements()
     titleBar.BorderSizePixel = 0
     titleBar.Parent = frame
     
-    -- Заголовок с иконкой RT
     local title = Instance.new("TextLabel")
     title.Size = __UD2(1, -40, 1, 0)
     title.Position = __UD2(0, 0, 0, 0)
@@ -2014,7 +2007,6 @@ local function CreateResetGUIElements()
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = titleBar
     
-    -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseBtn"
     closeBtn.Size = __UD2(0, 30, 0, 30)
@@ -2035,7 +2027,7 @@ local function CreateResetGUIElements()
         ResetState.resetGuiOpen = false
     end)
     
-    -- Делаем GUI перетаскиваемым (весь фрейм)
+    -- Делаем GUI перетаскиваемым
     MakeResetGuiDraggable(frame)
     
     -- Скроллинг фрейм
@@ -2057,7 +2049,7 @@ local function CreateResetGUIElements()
     layout.Padding = UDim.new(0, 4)
     layout.Parent = scrollFrame
     
-    -- Функция создания элементов GUI
+    -- Функция создания кнопок
     local function AddResetButton(text, color, callback)
         local btn = Instance.new("TextButton")
         btn.Size = __UD2(0.9, 0, 0, 32)
@@ -2119,10 +2111,132 @@ local function CreateResetGUIElements()
         return container
     end
     
+    -- Функция для выбора игрока
+    local function AddPlayerSelector(labelText, callback)
+        local container = Instance.new("Frame")
+        container.Size = __UD2(0.9, 0, 0, 40)
+        container.BackgroundTransparency = 1
+        container.Parent = scrollFrame
+        
+        local label = Instance.new("TextLabel")
+        label.Size = __UD2(1, 0, 0, 18)
+        label.Position = __UD2(0, 0, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.Jura
+        label.Text = labelText
+        label.TextColor3 = __RGB(200, 200, 200)
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.Parent = container
+        
+        local dropdown = Instance.new("TextButton")
+        dropdown.Size = __UD2(1, 0, 0, 20)
+        dropdown.Position = __UD2(0, 0, 0, 18)
+        dropdown.BackgroundColor3 = __RGB(30, 30, 50)
+        dropdown.BackgroundTransparency = 0.3
+        dropdown.BorderSizePixel = 0
+        dropdown.Font = Enum.Font.Jura
+        dropdown.Text = "Select Player..."
+        dropdown.TextColor3 = __RGB(200, 200, 200)
+        dropdown.TextSize = 12
+        dropdown.Parent = container
+        
+        Instance.new("UICorner", dropdown).CornerRadius = __UD(0, 4)
+        
+        -- Создаём список игроков
+        local listFrame = Instance.new("Frame")
+        listFrame.Size = __UD2(1, 0, 0, 100)
+        listFrame.Position = __UD2(0, 0, 0, 40)
+        listFrame.BackgroundColor3 = __RGB(20, 20, 30)
+        listFrame.BackgroundTransparency = 0.1
+        listFrame.BorderSizePixel = 1
+        listFrame.BorderColor3 = __RGB(50, 50, 80)
+        listFrame.Visible = false
+        listFrame.ZIndex = 10
+        listFrame.Parent = container
+        
+        Instance.new("UICorner", listFrame).CornerRadius = __UD(0, 4)
+        
+        local listLayout = Instance.new("UIListLayout")
+        listLayout.FillDirection = Enum.FillDirection.Vertical
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        listLayout.Padding = UDim.new(0, 1)
+        listLayout.Parent = listFrame
+        
+        local function UpdatePlayerList()
+            -- Очищаем старый список
+            for _, child in ipairs(listFrame:GetChildren()) do
+                if child:IsA("TextButton") then child:Destroy() end
+            end
+            
+            local players = Players:GetPlayers()
+            for _, player in ipairs(players) do
+                if player ~= LocalPlayer then
+                    local btn = Instance.new("TextButton")
+                    btn.Size = __UD2(1, 0, 0, 25)
+                    btn.BackgroundColor3 = __RGB(30, 30, 50)
+                    btn.BackgroundTransparency = 0.3
+                    btn.BorderSizePixel = 0
+                    btn.Font = Enum.Font.Jura
+                    btn.Text = player.Name
+                    btn.TextColor3 = __RGB(200, 200, 200)
+                    btn.TextSize = 12
+                    btn.Parent = listFrame
+                    
+                    Instance.new("UICorner", btn).CornerRadius = __UD(0, 2)
+                    
+                    btn.MouseButton1Click:Connect(function()
+                        dropdown.Text = player.Name
+                        listFrame.Visible = false
+                        callback(player)
+                    end)
+                end
+            end
+        end
+        
+        dropdown.MouseButton1Click:Connect(function()
+            listFrame.Visible = not listFrame.Visible
+            if listFrame.Visible then
+                UpdatePlayerList()
+                -- Обновляем размер списка
+                local children = {}
+                for _, child in ipairs(listFrame:GetChildren()) do
+                    if child:IsA("TextButton") then
+                        table.insert(children, child)
+                    end
+                end
+                local height = #children * 26
+                listFrame.Size = __UD2(1, 0, 0, math.min(height, 150))
+            end
+        end)
+        
+        return container
+    end
+    
     -- Создание элементов GUI
     AddResetButton("🔄 Check My Role", __RGB(40, 40, 80), function()
         local role = Reset_getMyRole()
         Reset_Notify("Your Role", role or "Innocent / No Role", 4)
+    end)
+    
+    -- ВЫБОР ИГРОКА ДЛЯ СБРОСА
+    AddPlayerSelector("🎯 Select Player to Reset", function(player)
+        ResetState.resetSelPlr = player
+        Reset_Notify("Selected", player.Name .. " for reset", 2)
+    end)
+    
+    -- КНОПКА СБРОСА ВЫБРАННОГО ИГРОКА
+    AddResetButton("🔄 Reset Selected Player", __RGB(80, 40, 40), function()
+        if ResetState.resetSelPlr then
+            if Reset_isWhitelisted(ResetState.resetSelPlr) then
+                Reset_Notify("Whitelist", ResetState.resetSelPlr.Name .. " is whitelisted!", 3)
+                return
+            end
+            task.spawn(VoidReset, ResetState.resetSelPlr)
+            Reset_Notify("Resetting", ResetState.resetSelPlr.Name, 2)
+        else
+            Reset_Notify("Error", "No player selected!", 3)
+        end
     end)
     
     AddResetButton("🔄 Reset Sheriff", __RGB(80, 40, 40), function()
@@ -2201,7 +2315,6 @@ local function CreateResetGUIElements()
         Reset_Notify("Whitelist", "Cleared!", 2)
     end)
     
-    -- Кнопка закрытия GUI изнутри
     AddResetButton("❌ Close RT GUI", __RGB(100, 0, 0), function()
         ResetGUI.Enabled = false
         ResetState.resetGuiOpen = false
@@ -2296,7 +2409,6 @@ local function ToggleWallhop()
     print("🧱 Wallhop: " .. (WallhopState.enabled and "ENABLED" or "DISABLED"))
 end
 
--- Кнопка открытия Reset GUI (RT)
 local function ToggleResetGUI()
     ResetState.resetGuiOpen = not ResetState.resetGuiOpen
     ResetGUI.Enabled = ResetState.resetGuiOpen
@@ -2309,27 +2421,22 @@ end
 local function CreateAllButtons()
     local buttonSize = 0.10
     
-    -- Aim Lock
     if not BindableButtons.Buttons["aim_toggle"] then
         BindableButtons.AddBButton("aim_toggle", "Aim:OFF", ToggleAimLock, false, "aim", buttonSize)
     end
     
-    -- Wall Check
     if not BindableButtons.Buttons["wall_toggle"] then
         BindableButtons.AddBButton("wall_toggle", "Wall:OFF", ToggleWallCheck, false, "wall", buttonSize)
     end
     
-    -- Outline
     if not BindableButtons.Buttons["outline_toggle"] then
         BindableButtons.AddBButton("outline_toggle", "OL:OFF", ToggleOutline, false, "outline", buttonSize)
     end
     
-    -- Wallhop
     if not BindableButtons.Buttons["wallhop_toggle"] then
         BindableButtons.AddBButton("wallhop_toggle", "WH:OFF", ToggleWallhop, false, "wallhop", buttonSize)
     end
     
-    -- Reset GUI Button (RT)
     if not BindableButtons.Buttons["reset_gui_toggle"] then
         BindableButtons.AddBButton("reset_gui_toggle", "RT", ToggleResetGUI, false, "reset", buttonSize)
     end
@@ -2524,7 +2631,6 @@ print("  [R] - Open RT GUI")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 CreateConsoleMenu()
 
--- Глобальные функции
 _G.MM2Menu = CreateConsoleMenu
 _G.MM2Aim = ToggleAimLock
 _G.MM2Wall = ToggleWallCheck
