@@ -1,6 +1,6 @@
 -- MM2 ULTIMATE PACKAGE v2.6
 -- Aim Lock + Outline + Bomb Jump + Wallhop + RT SYSTEM
--- СТИЛЬ: OMNIVERSE + MONOCHROME
+-- СТИЛЬ: MONOCHROME (по умолчанию)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -75,24 +75,9 @@ local __PCLR = Color3.new
 local __RGB = Color3.fromRGB
 
 -- ==============================================
--- ЦВЕТОВЫЕ НАСТРОЙКИ GUI
+-- ЦВЕТОВЫЕ НАСТРОЙКИ GUI (MONOCHROME ПО УМОЛЧАНИЮ)
 -- ==============================================
 local GUI_STYLES = {
-    OMNIVERSE = {
-        name = "OMNIVERSE",
-        bg = __RGB(10, 8, 15),
-        bgTitle = __RGB(25, 18, 40),
-        border = __RGB(120, 80, 200),
-        text = __RGB(200, 190, 220),
-        accent = __RGB(150, 110, 255),
-        bgHover = __RGB(40, 28, 70),
-        statusActive = __RGB(100, 255, 150),
-        statusOff = __RGB(200, 80, 80),
-        btnBg = __RGB(30, 22, 50),
-        gradient1 = __RGB(120, 80, 200),
-        gradient2 = __RGB(200, 150, 255),
-        gradient3 = __RGB(120, 80, 200),
-    },
     MONOCHROME = {
         name = "MONOCHROME",
         bg = __RGB(0, 0, 0),
@@ -107,13 +92,28 @@ local GUI_STYLES = {
         gradient1 = __RGB(255, 255, 255),
         gradient2 = __RGB(169, 169, 169),
         gradient3 = __RGB(255, 255, 255),
+    },
+    OMNIVERSE = {
+        name = "OMNIVERSE",
+        bg = __RGB(10, 8, 15),
+        bgTitle = __RGB(25, 18, 40),
+        border = __RGB(120, 80, 200),
+        text = __RGB(200, 190, 220),
+        accent = __RGB(150, 110, 255),
+        bgHover = __RGB(40, 28, 70),
+        statusActive = __RGB(100, 255, 150),
+        statusOff = __RGB(200, 80, 80),
+        btnBg = __RGB(30, 22, 50),
+        gradient1 = __RGB(120, 80, 200),
+        gradient2 = __RGB(200, 150, 255),
+        gradient3 = __RGB(120, 80, 200),
     }
 }
 
-local CurrentStyle = "OMNIVERSE"
+local CurrentStyle = "MONOCHROME" -- ПО УМОЛЧАНИЮ MONOCHROME
 
 local function GetColors()
-    return GUI_STYLES[CurrentStyle] or GUI_STYLES.OMNIVERSE
+    return GUI_STYLES[CurrentStyle] or GUI_STYLES.MONOCHROME
 end
 
 -- ==============================================
@@ -172,9 +172,9 @@ local __WALLHOP_COLOR = ColorSequence.new({
 })
 
 local __RT_COLOR = ColorSequence.new({
-    ColorSequenceKeypoint.new(0,   __RGB(200, 80, 180)),
-    ColorSequenceKeypoint.new(0.5, __RGB(150, 110, 255)),
-    ColorSequenceKeypoint.new(1,   __RGB(200, 80, 180))
+    ColorSequenceKeypoint.new(0,   __RGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.5, __RGB(169, 169, 169)),
+    ColorSequenceKeypoint.new(1,   __RGB(255, 255, 255))
 })
 
 local muteButtonSounds = false
@@ -215,6 +215,8 @@ function BindableButtons.AddBButton(id, text, clickFunc, colorType, customSize)
     local screen = camera.ViewportSize
     local buttonSizeY = customSize or 0.10
     local widthScale = buttonSizeY * (screen.Y / screen.X)
+    
+    -- Размещение кнопок в ряд
     local xPos = 0.06 + ((BindableButtons.Count % 8) * (widthScale + 0.008))
     local yPos = 0.82 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
 
@@ -912,7 +914,7 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 -- ==============================================
--- BOMB JUMP+ СИСТЕМА
+-- BOMB JUMP+ СИСТЕМА (РАЗМЕР 18)
 -- ==============================================
 local BOMB_NAMES = {
     "FakeBomb", 
@@ -1720,7 +1722,7 @@ end
 local ResetGUI = CreateResetGUI()
 
 -- ==============================================
--- ГЛАВНЫЙ GUI (СТИЛЬ OMNIVERSE/MONOCHROME)
+-- ГЛАВНЫЙ GUI (СТИЛЬ MONOCHROME)
 -- ==============================================
 local function CreateResetGUIElements()
     local COLORS = GetColors()
@@ -1785,7 +1787,7 @@ local function CreateResetGUIElements()
     logo.Size = __UD2(0.8, 0, 1, 0)
     logo.Position = __UD2(0.05, 0, 0, 0)
     logo.BackgroundTransparency = 1
-    logo.Text = "🔄 RT SYSTEM"
+    logo.Text = "⚫ RT SYSTEM"
     logo.TextColor3 = COLORS.accent
     logo.TextSize = 13
     logo.Font = Enum.Font.Jura
@@ -1872,7 +1874,7 @@ local function CreateResetGUIElements()
     layout.Padding = UDim.new(0, 4)
     layout.Parent = scrollFrame
     
-    -- Функция создания кнопок (стиль OMNIVERSE/MONOCHROME)
+    -- Функция создания кнопок (стиль MONOCHROME)
     local function AddButton(text, color, callback)
         local btn = Instance.new("TextButton")
         btn.Size = __UD2(0.92, 0, 0, 26)
@@ -2075,14 +2077,14 @@ local function CreateResetGUIElements()
     
     -- ===== СОЗДАНИЕ ЭЛЕМЕНТОВ =====
     
-    AddButton("🔄 Check Role", __RGB(40, 30, 80), function()
+    AddButton("⚫ Check Role", __RGB(40, 40, 40), function()
         local role = Reset_getMyRole()
         Reset_Notify("Your Role", role or "Innocent")
     end)
     
     AddPlayerSection()
     
-    AddButton("🔄 Reset Selected", __RGB(80, 40, 50), function()
+    AddButton("⚫ Reset Selected", __RGB(60, 40, 40), function()
         if ResetState.resetSelPlr then
             if Reset_isWhitelisted(ResetState.resetSelPlr) then
                 Reset_Notify("Whitelist", ResetState.resetSelPlr.Name .. " is whitelisted!")
@@ -2095,7 +2097,7 @@ local function CreateResetGUIElements()
         end
     end)
     
-    AddButton("🔄 Reset Sheriff", __RGB(80, 40, 40), function()
+    AddButton("⚫ Reset Sheriff", __RGB(60, 30, 30), function()
         if not Reset_canTargetSheriff() then
             Reset_Notify("Blocked", "Murderer cannot target Sheriff")
             return
@@ -2105,7 +2107,7 @@ local function CreateResetGUIElements()
         else Reset_Notify("Error", "No Sheriff found") end
     end)
     
-    AddButton("🔄 Reset Murderer", __RGB(40, 40, 80), function()
+    AddButton("⚫ Reset Murderer", __RGB(30, 30, 60), function()
         if not Reset_canTargetMurderer() then
             Reset_Notify("Blocked", "Sheriff cannot target Murderer")
             return
@@ -2115,7 +2117,7 @@ local function CreateResetGUIElements()
         else Reset_Notify("Error", "No Murderer found") end
     end)
     
-    AddButton("🔄 Reset Both", __RGB(80, 40, 80), function()
+    AddButton("⚫ Reset Both", __RGB(50, 30, 50), function()
         local role = Reset_getMyRole()
         if role == "Murderer" then
             Reset_Notify("Blocked", "You are the Murderer")
@@ -2134,7 +2136,7 @@ local function CreateResetGUIElements()
         end
     end)
     
-    AddButton("🔄 Reset All", __RGB(80, 20, 20), function()
+    AddButton("⚫ Reset All", __RGB(60, 20, 20), function()
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and not Reset_isWhitelisted(p) then
                 task.spawn(VoidReset, p)
@@ -2142,7 +2144,7 @@ local function CreateResetGUIElements()
         end
     end)
     
-    AddToggle("🛡️ Noclip", 
+    AddToggle("⚫ Noclip", 
         function() return ResetState.noclipEnabled end,
         function(v) 
             ResetState.noclipEnabled = v
@@ -2151,7 +2153,7 @@ local function CreateResetGUIElements()
         end
     )
     
-    AddToggle("🔄 Anti-Fling",
+    AddToggle("⚫ Anti-Fling",
         function() return ResetState.antiFlingEnabled end,
         function(v)
             ResetState.antiFlingEnabled = v
@@ -2166,12 +2168,12 @@ local function CreateResetGUIElements()
         end
     )
     
-    AddButton("📋 Clear Whitelist", __RGB(50, 30, 30), function()
+    AddButton("⚫ Clear Whitelist", __RGB(40, 30, 30), function()
         ResetState.whitelist = {}
         Reset_Notify("Whitelist", "Cleared!")
     end)
     
-    AddButton("❌ Close RT GUI", __RGB(100, 20, 20), function()
+    AddButton("⚫ Close RT GUI", __RGB(60, 20, 20), function()
         ResetGUI.Enabled = false
         ResetState.resetGuiOpen = false
     end)
@@ -2185,7 +2187,7 @@ end
 CreateResetGUIElements()
 
 -- ==============================================
--- КНОПКИ НА ЭКРАНЕ (СТИЛЬ OMNIVERSE/MONOCHROME)
+-- КНОПКИ НА ЭКРАНЕ
 -- ==============================================
 -- Aim Lock
 BindableButtons.AddBButton("aim_toggle", "Aim:OFF", function()
@@ -2217,22 +2219,24 @@ BindableButtons.AddBButton("wallhop_toggle", "WH:OFF", function()
     BindableButtons.UpdateBButtonColor("wallhop_toggle", WallhopState.enabled, "wallhop")
 end)
 
--- Bomb Jump
+-- Bomb Jump (РАЗМЕР 18)
 BindableButtons.AddBButton("bombjump_bind", "BJ", function()
     BombJumpState.enabled = not BombJumpState.enabled
     if BombJumpState.enabled then
         BombJumpState.bindButton = BindableButtons.Buttons["bombjump_bind"]
         BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
+        print("💣 Bomb Jump: ON")
     else
         BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
+        print("💣 Bomb Jump: OFF")
     end
-end)
+end, "bomb", 0.18) -- РАЗМЕР 18
 
 -- RT
 BindableButtons.AddBButton("rt_toggle", "RT", function()
     ResetState.resetGuiOpen = not ResetState.resetGuiOpen
     ResetGUI.Enabled = ResetState.resetGuiOpen
-end)
+end, "rt")
 
 -- ==============================================
 -- ФУНКЦИЯ СМЕНЫ СТИЛЯ
@@ -2241,7 +2245,6 @@ local function SetGUIStyle(styleName)
     if GUI_STYLES[styleName] then
         CurrentStyle = styleName
         if ResetGUI then
-            -- Пересоздаём GUI
             for _, child in ipairs(ResetGUI:GetChildren()) do
                 child:Destroy()
             end
@@ -2301,23 +2304,21 @@ end)
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("⚡ MM2 ULTIMATE PACKAGE v2.6")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🎨 СТИЛИ GUI:")
-print("  • OMNIVERSE (фиолетовый)")
-print("  • MONOCHROME (чёрно-белый)")
+print("🎨 СТИЛЬ: MONOCHROME (по умолчанию)")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("🎯 ФУНКЦИИ:")
 print("  🎯 Aim Lock    - Автонаведение")
 print("  🧱 Wall Check  - Проверка видимости")
 print("  👁️ Outline     - Подсветка игроков")
 print("  🧱 Wallhop     - Флинг у стен")
-print("  💣 Bomb Jump   - Прыжок с бомбой")
+print("  💣 Bomb Jump   - Прыжок с бомбой (18)")
 print("  🔄 RT System   - Сброс игроков")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
 print("  [R] - Open/Close RT GUI")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🔧 Type 'SetGUIStyle(\"MONOCHROME\")' for black/white")
 print("🔧 Type 'SetGUIStyle(\"OMNIVERSE\")' for purple")
+print("🔧 Type 'SetGUIStyle(\"MONOCHROME\")' for black/white")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 _G.SetGUIStyle = SetGUIStyle
