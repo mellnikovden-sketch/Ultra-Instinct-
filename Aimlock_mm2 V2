@@ -1,6 +1,6 @@
 -- MM2 ULTIMATE PACKAGE v2.6
 -- Aim Lock + Outline + Bomb Jump + Wallhop + RT SYSTEM
--- СТИЛЬ: MONOCHROME (по умолчанию)
+-- Стиль: MONOCHROME
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -73,48 +73,6 @@ local __UD = UDim.new
 local __V2 = Vector2.new
 local __PCLR = Color3.new
 local __RGB = Color3.fromRGB
-
--- ==============================================
--- ЦВЕТОВЫЕ НАСТРОЙКИ GUI (MONOCHROME ПО УМОЛЧАНИЮ)
--- ==============================================
-local GUI_STYLES = {
-    MONOCHROME = {
-        name = "MONOCHROME",
-        bg = __RGB(0, 0, 0),
-        bgTitle = __RGB(30, 30, 30),
-        border = __RGB(255, 255, 255),
-        text = __RGB(200, 200, 200),
-        accent = __RGB(255, 255, 255),
-        bgHover = __RGB(60, 60, 60),
-        statusActive = __RGB(169, 169, 169),
-        statusOff = __RGB(100, 100, 100),
-        btnBg = __RGB(40, 40, 40),
-        gradient1 = __RGB(255, 255, 255),
-        gradient2 = __RGB(169, 169, 169),
-        gradient3 = __RGB(255, 255, 255),
-    },
-    OMNIVERSE = {
-        name = "OMNIVERSE",
-        bg = __RGB(10, 8, 15),
-        bgTitle = __RGB(25, 18, 40),
-        border = __RGB(120, 80, 200),
-        text = __RGB(200, 190, 220),
-        accent = __RGB(150, 110, 255),
-        bgHover = __RGB(40, 28, 70),
-        statusActive = __RGB(100, 255, 150),
-        statusOff = __RGB(200, 80, 80),
-        btnBg = __RGB(30, 22, 50),
-        gradient1 = __RGB(120, 80, 200),
-        gradient2 = __RGB(200, 150, 255),
-        gradient3 = __RGB(120, 80, 200),
-    }
-}
-
-local CurrentStyle = "MONOCHROME" -- ПО УМОЛЧАНИЮ MONOCHROME
-
-local function GetColors()
-    return GUI_STYLES[CurrentStyle] or GUI_STYLES.MONOCHROME
-end
 
 -- ==============================================
 -- BINDABLE BUTTONS (С ПЕРЕТАСКИВАНИЕМ)
@@ -215,8 +173,6 @@ function BindableButtons.AddBButton(id, text, clickFunc, colorType, customSize)
     local screen = camera.ViewportSize
     local buttonSizeY = customSize or 0.10
     local widthScale = buttonSizeY * (screen.Y / screen.X)
-    
-    -- Размещение кнопок в ряд
     local xPos = 0.06 + ((BindableButtons.Count % 8) * (widthScale + 0.008))
     local yPos = 0.82 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
 
@@ -926,7 +882,7 @@ local BOMB_NAMES = {
 }
 
 local BombJumpState = {
-    enabled = false,
+    enabled = true, -- ВКЛЮЧЕН ПО УМОЛЧАНИЮ
     onCooldown = false,
     debounce = false,
     autoGetBomb = true,
@@ -1357,7 +1313,7 @@ WallhopMaid:GiveTask(UserInputService.WindowFocused:Connect(function()
 end))
 
 -- ==============================================
--- RT SYSTEM (RESET)
+-- RT SYSTEM (RESET) - ОТДЕЛЬНОЕ GUI ПО ЦЕНТРУ
 -- ==============================================
 local ResetState = {
     noclipEnabled = false,
@@ -1702,7 +1658,7 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- СОЗДАНИЕ GUI ДЛЯ RESET
+-- СОЗДАНИЕ GUI ДЛЯ RESET (ПО ЦЕНТРУ, МЕНЬШЕ)
 -- ==============================================
 local function CreateResetGUI()
     local gui = Instance.new("ScreenGui")
@@ -1722,16 +1678,30 @@ end
 local ResetGUI = CreateResetGUI()
 
 -- ==============================================
--- ГЛАВНЫЙ GUI (СТИЛЬ MONOCHROME)
+-- ГЛАВНЫЙ GUI (СТИЛЬ MONOCHROME, ПО ЦЕНТРУ, МЕНЬШЕ)
 -- ==============================================
 local function CreateResetGUIElements()
-    local COLORS = GetColors()
-    
-    -- Главный фрейм
+    -- Цвета MONOCHROME
+    local COLORS = {
+        bg = __RGB(0, 0, 0),
+        bgTitle = __RGB(30, 30, 30),
+        border = __RGB(255, 255, 255),
+        text = __RGB(200, 200, 200),
+        accent = __RGB(255, 255, 255),
+        bgHover = __RGB(60, 60, 60),
+        statusActive = __RGB(169, 169, 169),
+        statusOff = __RGB(100, 100, 100),
+        btnBg = __RGB(40, 40, 40),
+        gradient1 = __RGB(255, 255, 255),
+        gradient2 = __RGB(169, 169, 169),
+        gradient3 = __RGB(255, 255, 255),
+    }
+
+    -- Главный фрейм (ПО ЦЕНТРУ, МЕНЬШЕ)
     local frame = Instance.new("Frame")
     frame.Name = "RTMainFrame"
-    frame.Size = __UD2(0, 280, 0, 420)
-    frame.Position = __UD2(0.5, -140, 0.9, -210)
+    frame.Size = __UD2(0, 260, 0, 380) -- УМЕНЬШЕН
+    frame.Position = __UD2(0.5, -130, 0.5, -190) -- ПО ЦЕНТРУ
     frame.AnchorPoint = __V2(0.5, 0.5)
     frame.BackgroundColor3 = COLORS.bg
     frame.BackgroundTransparency = 0.92
@@ -1871,20 +1841,20 @@ local function CreateResetGUIElements()
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 4)
+    layout.Padding = UDim.new(0, 3)
     layout.Parent = scrollFrame
     
-    -- Функция создания кнопок (стиль MONOCHROME)
+    -- Функция создания кнопок (уменьшенные)
     local function AddButton(text, color, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = __UD2(0.92, 0, 0, 26)
+        btn.Size = __UD2(0.92, 0, 0, 24)
         btn.BackgroundColor3 = color or COLORS.btnBg
         btn.BackgroundTransparency = 0.4
         btn.BorderSizePixel = 0
         btn.Font = Enum.Font.Jura
         btn.Text = text
         btn.TextColor3 = __RGB(255, 255, 255)
-        btn.TextSize = 11
+        btn.TextSize = 10
         btn.Parent = scrollFrame
         
         Instance.new("UICorner", btn).CornerRadius = __UD(0, 4)
@@ -1904,7 +1874,7 @@ local function CreateResetGUIElements()
     
     local function AddToggle(text, getState, setState)
         local container = Instance.new("Frame")
-        container.Size = __UD2(0.92, 0, 0, 26)
+        container.Size = __UD2(0.92, 0, 0, 24)
         container.BackgroundTransparency = 1
         container.Parent = scrollFrame
         
@@ -1915,7 +1885,7 @@ local function CreateResetGUIElements()
         label.Font = Enum.Font.Jura
         label.Text = text
         label.TextColor3 = COLORS.text
-        label.TextSize = 11
+        label.TextSize = 10
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
@@ -1926,7 +1896,7 @@ local function CreateResetGUIElements()
         toggle.BorderSizePixel = 0
         toggle.Font = Enum.Font.Jura
         toggle.TextColor3 = __RGB(255, 255, 255)
-        toggle.TextSize = 10
+        toggle.TextSize = 9
         toggle.Parent = container
         
         Instance.new("UICorner", toggle).CornerRadius = __UD(0, 4)
@@ -1953,10 +1923,10 @@ local function CreateResetGUIElements()
         return container
     end
     
-    -- СЕКЦИЯ ВЫБОРА ИГРОКА
+    -- СЕКЦИЯ ВЫБОРА ИГРОКА (уменьшенная)
     local function AddPlayerSection()
         local section = Instance.new("Frame")
-        section.Size = __UD2(0.92, 0, 0, 70)
+        section.Size = __UD2(0.92, 0, 0, 60)
         section.BackgroundColor3 = COLORS.bgTitle
         section.BackgroundTransparency = 0.3
         section.BorderSizePixel = 1
@@ -1966,19 +1936,19 @@ local function CreateResetGUIElements()
         Instance.new("UICorner", section).CornerRadius = __UD(0, 4)
         
         local sectionLabel = Instance.new("TextLabel")
-        sectionLabel.Size = __UD2(1, 0, 0, 18)
+        sectionLabel.Size = __UD2(1, 0, 0, 16)
         sectionLabel.Position = __UD2(0, 0, 0, 0)
         sectionLabel.BackgroundTransparency = 1
         sectionLabel.Font = Enum.Font.Jura
         sectionLabel.Text = "🎯 PLAYER SELECT"
         sectionLabel.TextColor3 = COLORS.accent
-        sectionLabel.TextSize = 10
+        sectionLabel.TextSize = 9
         sectionLabel.TextXAlignment = Enum.TextXAlignment.Center
         sectionLabel.Parent = section
         
         local playersContainer = Instance.new("Frame")
-        playersContainer.Size = __UD2(1, 0, 0, 48)
-        playersContainer.Position = __UD2(0, 0, 0, 20)
+        playersContainer.Size = __UD2(1, 0, 0, 40)
+        playersContainer.Position = __UD2(0, 0, 0, 18)
         playersContainer.BackgroundTransparency = 1
         playersContainer.ClipsDescendants = true
         playersContainer.Parent = section
@@ -1989,7 +1959,7 @@ local function CreateResetGUIElements()
         playersScroll.BackgroundTransparency = 1
         playersScroll.BorderSizePixel = 0
         playersScroll.CanvasSize = __UD2(0, 0, 0, 0)
-        playersScroll.ScrollBarThickness = 3
+        playersScroll.ScrollBarThickness = 2
         playersScroll.ScrollBarImageColor3 = COLORS.border
         playersScroll.Parent = playersContainer
         
@@ -1997,7 +1967,7 @@ local function CreateResetGUIElements()
         playersLayout.FillDirection = Enum.FillDirection.Horizontal
         playersLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
         playersLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        playersLayout.Padding = UDim.new(0, 4)
+        playersLayout.Padding = UDim.new(0, 3)
         playersLayout.Parent = playersScroll
         
         local function UpdatePlayersList()
@@ -2009,18 +1979,18 @@ local function CreateResetGUIElements()
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
                     local btn = Instance.new("TextButton")
-                    btn.Size = __UD2(0, 58, 0, 40)
+                    btn.Size = __UD2(0, 50, 0, 34)
                     btn.BackgroundColor3 = COLORS.btnBg
                     btn.BackgroundTransparency = 0.3
                     btn.BorderSizePixel = 0
                     btn.Font = Enum.Font.Jura
                     btn.Text = player.Name
                     btn.TextColor3 = COLORS.text
-                    btn.TextSize = 9
+                    btn.TextSize = 8
                     btn.TextWrapped = true
                     btn.Parent = playersScroll
                     
-                    Instance.new("UICorner", btn).CornerRadius = __UD(0, 4)
+                    Instance.new("UICorner", btn).CornerRadius = __UD(0, 3)
                     
                     if ResetState.resetSelPlr and ResetState.resetSelPlr.UserId == player.UserId then
                         btn.BackgroundColor3 = COLORS.accent
@@ -2060,8 +2030,8 @@ local function CreateResetGUIElements()
                 end
             end
             
-            local totalWidth = playerCount * 62
-            playersScroll.CanvasSize = __UD2(0, math.max(totalWidth, 240), 0, 0)
+            local totalWidth = playerCount * 53
+            playersScroll.CanvasSize = __UD2(0, math.max(totalWidth, 200), 0, 0)
         end
         
         UpdatePlayersList()
@@ -2239,26 +2209,40 @@ BindableButtons.AddBButton("rt_toggle", "RT", function()
 end, "rt")
 
 -- ==============================================
--- ФУНКЦИЯ СМЕНЫ СТИЛЯ
--- ==============================================
-local function SetGUIStyle(styleName)
-    if GUI_STYLES[styleName] then
-        CurrentStyle = styleName
-        if ResetGUI then
-            for _, child in ipairs(ResetGUI:GetChildren()) do
-                child:Destroy()
-            end
-            CreateResetGUIElements()
-        end
-        print("🎨 GUI Style: " .. styleName)
-    end
-end
-
--- ==============================================
 -- ГОРЯЧИЕ КЛАВИШИ
 -- ==============================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.T then
+        AimLockEnabled = not AimLockEnabled
+        if AimLockEnabled then TargetPlayer = FindMurderer(nil) else TargetPlayer = nil end
+        BindableButtons.UpdateBButtonText("aim_toggle", AimLockEnabled and "Aim:ON" or "Aim:OFF")
+        BindableButtons.UpdateBButtonColor("aim_toggle", AimLockEnabled, "aim")
+    end
+    
+    if input.KeyCode == Enum.KeyCode.G then
+        WallCheckEnabled = not WallCheckEnabled
+        BindableButtons.UpdateBButtonText("wall_toggle", WallCheckEnabled and "Wall:ON" or "Wall:OFF")
+        BindableButtons.UpdateBButtonColor("wall_toggle", WallCheckEnabled, "wall")
+    end
+    
+    if input.KeyCode == Enum.KeyCode.E then
+        OutlineEnabled = not OutlineEnabled
+        if OutlineEnabled then FullRefreshOutline() else for plr, _ in pairs(OutlinedPlayers) do RemoveOutline(plr) end end
+        BindableButtons.UpdateBButtonText("outline_toggle", OutlineEnabled and "OL:ON" or "OL:OFF")
+        BindableButtons.UpdateBButtonColor("outline_toggle", OutlineEnabled, "outline")
+    end
+    
+    if input.KeyCode == Enum.KeyCode.B then
+        BombJumpState.enabled = not BombJumpState.enabled
+        if BombJumpState.enabled then
+            BombJumpState.bindButton = BindableButtons.Buttons["bombjump_bind"]
+            BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
+        else
+            BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
+        end
+    end
     
     if input.KeyCode == Enum.KeyCode.R then
         ResetState.resetGuiOpen = not ResetState.resetGuiOpen
@@ -2304,7 +2288,8 @@ end)
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("⚡ MM2 ULTIMATE PACKAGE v2.6")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🎨 СТИЛЬ: MONOCHROME (по умолчанию)")
+print("🎨 СТИЛЬ: MONOCHROME")
+print("📍 RT GUI ПО ЦЕНТРУ")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("🎯 ФУНКЦИИ:")
 print("  🎯 Aim Lock    - Автонаведение")
@@ -2315,10 +2300,9 @@ print("  💣 Bomb Jump   - Прыжок с бомбой (18)")
 print("  🔄 RT System   - Сброс игроков")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
+print("  [T] - Aim Lock")
+print("  [G] - Wall Check")
+print("  [E] - Outline")
+print("  [B] - Bomb Jump")
 print("  [R] - Open/Close RT GUI")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🔧 Type 'SetGUIStyle(\"OMNIVERSE\")' for purple")
-print("🔧 Type 'SetGUIStyle(\"MONOCHROME\")' for black/white")
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
-_G.SetGUIStyle = SetGUIStyle
