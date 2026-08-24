@@ -6,6 +6,7 @@
 -- FIXED: Размер кнопок Bomb Jump = 18
 -- FIXED: Авто-получение бомб включено по умолчанию
 -- ADDED: WallHop система (флинг при прыжке возле стыка стен)
+-- FIXED: Кнопка WallHop теперь работает корректно
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -236,7 +237,8 @@ end
 -- --- Функции управления WallHop ---
 function ToggleWallHop()
     WallHop.enabled = not WallHop.enabled
-    if WallHop.bindButton then
+    local btn = BindableButtons.Buttons["wallhop_toggle"]
+    if btn then
         BindableButtons.UpdateBButtonText("wallhop_toggle", WallHop.enabled and "WH:ON" or "WH:OFF", false, false)
         BindableButtons.UpdateBButtonColor("wallhop_toggle", WallHop.enabled, "wallhop")
     end
