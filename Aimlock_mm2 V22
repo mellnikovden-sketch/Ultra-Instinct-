@@ -327,275 +327,6 @@ function BindableButtons.UpdateBButtonColor(id, isActive, colorType)
 end
 
 -- ==============================================
--- BOMB JUMP+ СИСТЕМА (ИЗ ВАШЕГО ФАЙЛА)
--- ==============================================
-local BOMB_NAMES = {
-    "FakeBomb", 
-    "Bomb", 
-    "GiftBomb", 
-    "PresentBomb",
-    "Snowball",
-    "CandyBomb"
-}
-
-local BombJumpState = {
-    enabled = true,
-    onCooldown = false,
-    debounce = false,
-    autoGetBomb = true,
-    justRespawned = false,
-    cooldownTime = 22,
-    power = 58,
-    bindButton = nil
-}
-
-local function IsPlayerInAir()
-    local character = LocalPlayer.Character
-    if not character then return false end
-    
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid then return false end
-    
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return false end
-    
-    local state = humanoid:GetState()
-    if state == Enum.HumanoidStateType.Jumping or 
-       state == Enum.HumanoidStateType.FallingDown or
-       state == Enum.HumanoidStateType.Freefall then
-        return true
-    end
-    
-    local velocityY = rootPart.Velocity.Y
-    return math.abs(velocityY) > 0.5
-end
-
-local function ResetBombCooldown()
-    BombJumpState.onCooldown = false
-    if BombJumpState.bindButton then
-        BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
-    end
-end
-
-local function StartBombCooldown()
-    BombJumpState.onCooldown = true
-    BombJumpState.debounce = false
-    
-    if BombJumpState.bindButton then
-        BindableButtons.UpdateBButtonText("bombjump_bind", "Wait")
-    end
-    
-    task.spawn(function()
-        for i = BombJumpState.cooldownTime, 1, -1 do
-            if not BombJumpState.onCooldown then break end
-            if BombJumpState.bindButton then
-                BindableButtons.UpdateBButtonText("bombjump_bind", tostring(i))
-            end
-            task.wait(1)
-        end
-        if BombJumpState.onCooldown then ResetBombCooldown() end
-    end)
-end
-
-local function GetCenterPosition()
-    local character = LocalPlayer.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        local root = character.HumanoidRootPart
-        local lookDir = Workspace.CurrentCamera.CFrame.LookVector
-        return root.Position + (lookDir * 3) + Vector3.new(0, -2, 0)
-    end
-    return nil
-end
-
-local function MakeCharacterJump()
-    local character = LocalPlayer.Character
-    if character then
-        local humanoid = character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
-    end
-end
-
-local function UnequipBomb(bombName)
-    task.spawn(function()
-        task.wait(0.5)
-        local character = LocalPlayer.Character
-        if character then
-            local bomb = character:FindFirstChild(bombName)
-            if bomb then
-                bomb.Parent = LocalPlayer.Backpack or character
-            end
-        end
-    end)
-end
-
-local function GetAnyBomb()
-    local character = LocalPlayer.Character
-    if not character then return false, nil end
-    
-    for _, name in ipairs(BOMB_NAMES) do
-        local bomb = character:FindFirstChild(name)
-        if bomb then return true, bomb end
-    end
-    
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    if backpack then
-        for _, name in ipairs(BOMB_NAMES) do
-            local bomb = backpack:FindFirstChild(name)
-            if bomb then
-                bomb.Parent = character
-                return true, bomb
-            end
-        end
-    end
-    
-    -- Пытаемся получить бомбу через Remote
-    local success = false
-    local attempts = 0
-    while not success and attempts < 3 do
-        attempts = attempts + 1
-        local ok = pcall(function()
-            ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer("FakeBomb")
-        end)
-        if ok then 
-            success = true
-            break
-        end
-        task.wait(0.1)
-    end
-    
-    if success then
-        for _ = 1, 5 do
-            for _, name in ipairs(BOMB_NAMES) do
-                local bomb = character:FindFirstChild(name)
-                if bomb then return true, bomb end
-                if backpack then
-                    bomb = backpack:FindFirstChild(name)
-                    if bomb then
-                        bomb.Parent = character
-                        return true, bomb
-                    end
-                end
-            end
-            task.wait(0.05)
-        end
-    end
-    
-    return false, nil
-end
-
-local function IsHoldingBomb()
-    local character = LocalPlayer.Character
-    if not character then return false end
-    
-    for _, name in ipairs(BOMB_NAMES) do
-        if character:FindFirstChild(name) then
-            return true
-        end
-    end
-    return false
-end
-
-local function FastBombJump()
-    if not IsPlayerInAir() then return end
-    if BombJumpState.onCooldown or BombJumpState.debounce or BombJumpState.justRespawned then return end
-    BombJumpState.debounce = true
-    
-    local success, bomb = GetAnyBomb()
-    
-    if success and bomb then
-        local position = GetCenterPosition()
-        if position then
-            local remote = bomb:FindFirstChild("Remote")
-            if remote then
-                pcall(function()
-                    remote:FireServer(CFrame.new(position), 50)
-                end)
-            end
-            
-            local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            if root then
-                local currentVelocity = root.AssemblyLinearVelocity
-                root.AssemblyLinearVelocity = Vector3.new(
-                    currentVelocity.X, 
-                    currentVelocity.Y + BombJumpState.power, 
-                    currentVelocity.Z
-                )
-            end
-            
-            MakeCharacterJump()
-            UnequipBomb(bomb.Name)
-            
-            task.spawn(function()
-                task.wait(0.1)
-                StartBombCooldown()
-            end)
-        end
-    end
-    
-    task.spawn(function()
-        task.wait(0.5)
-        BombJumpState.debounce = false
-    end)
-end
-
--- Обработка ввода для бомбы
-local activeTouches = {}
-
-local TAP_MOVEMENT_THRESHOLD = 10
-local TAP_TIME_THRESHOLD = 0.3
-
-RootMaid:GiveTasks(
-    UserInputService.InputBegan:Connect(function(input, gp)
-        if gp then return end
-        if input.UserInputType == Enum.UserInputType.Touch or 
-           input.UserInputType == Enum.UserInputType.MouseButton1 then
-            activeTouches[input] = {
-                startPosition = input.Position, 
-                startTime = tick(), 
-                moved = false
-            }
-        end
-    end),
-    UserInputService.InputChanged:Connect(function(input)
-        local data = activeTouches[input]
-        if data and (input.Position - data.startPosition).Magnitude > TAP_MOVEMENT_THRESHOLD then
-            data.moved = true
-        end
-    end),
-    UserInputService.InputEnded:Connect(function(input, gp)
-        if gp then 
-            activeTouches[input] = nil 
-            return 
-        end
-        local data = activeTouches[input]
-        if data and not data.moved and tick() - data.startTime <= TAP_TIME_THRESHOLD then
-            if BombJumpState.enabled and not BombJumpState.onCooldown and not BombJumpState.debounce then
-                if IsHoldingBomb() and IsPlayerInAir() then
-                    FastBombJump()
-                end
-            end
-        end
-        activeTouches[input] = nil
-    end),
-    LocalPlayer.CharacterAdded:Connect(function()
-        ResetBombCooldown()
-        activeTouches = {}
-        BombJumpState.justRespawned = true
-        task.wait(1)
-        BombJumpState.justRespawned = false
-        if BombJumpState.autoGetBomb then
-            task.wait(0.2)
-            pcall(function() 
-                ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer("FakeBomb") 
-            end)
-        end
-    end)
-)
-
--- ==============================================
 -- ОПРЕДЕЛЕНИЕ РОЛЕЙ
 -- ==============================================
 local function FindMurdererWeapon(character)
@@ -956,7 +687,8 @@ local function RemoveOutline(plr)
         local data = OutlinedPlayers[plr]
         if data.Highlight then 
             pcall(function() data.Highlight:Destroy() end)
-        end        if data.Billboard then 
+        end
+        if data.Billboard then 
             pcall(function() data.Billboard:Destroy() end)
         end
         OutlinedPlayers[plr] = nil
@@ -1136,6 +868,220 @@ Players.PlayerRemoving:Connect(function()
         OnRoundChange()
     end
 end)
+
+-- ==============================================
+-- BOMB JUMP+ СИСТЕМА (РАЗМЕР 18)
+-- ==============================================
+local BOMB_NAMES = {
+    "FakeBomb", 
+    "Bomb", 
+    "GiftBomb", 
+    "PresentBomb",
+    "Snowball",
+    "CandyBomb"
+}
+
+local BombJumpState = {
+    enabled = true, -- ВКЛЮЧЕН ПО УМОЛЧАНИЮ
+    onCooldown = false,
+    debounce = false,
+    autoGetBomb = true,
+    justRespawned = false,
+    cooldownTime = 22,
+    power = 58,
+    bindButton = nil
+}
+
+local function IsPlayerInAir()
+    local character = LocalPlayer.Character
+    if not character then return false end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return false end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return false end
+    
+    local state = humanoid:GetState()
+    if state == Enum.HumanoidStateType.Jumping or 
+       state == Enum.HumanoidStateType.FallingDown or
+       state == Enum.HumanoidStateType.Freefall then
+        return true
+    end
+    
+    local velocityY = rootPart.Velocity.Y
+    return math.abs(velocityY) > 0.5
+end
+
+local function ResetBombCooldown()
+    BombJumpState.onCooldown = false
+    if BombJumpState.bindButton then
+        BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
+    end
+end
+
+local function StartBombCooldown()
+    BombJumpState.onCooldown = true
+    BombJumpState.debounce = false
+    
+    if BombJumpState.bindButton then
+        BindableButtons.UpdateBButtonText("bombjump_bind", "Wait")
+    end
+    
+    task.spawn(function()
+        for i = BombJumpState.cooldownTime, 1, -1 do
+            if not BombJumpState.onCooldown then break end
+            if BombJumpState.bindButton then
+                BindableButtons.UpdateBButtonText("bombjump_bind", tostring(i))
+            end
+            task.wait(1)
+        end
+        if BombJumpState.onCooldown then ResetBombCooldown() end
+    end)
+end
+
+local function GetCenterPosition()
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local root = character.HumanoidRootPart
+        local lookDir = Workspace.CurrentCamera.CFrame.LookVector
+        return root.Position + (lookDir * 3) + Vector3.new(0, -2, 0)
+    end
+    return nil
+end
+
+local function MakeCharacterJump()
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end
+
+local function UnequipBomb(bombName)
+    task.spawn(function()
+        task.wait(0.5)
+        local character = LocalPlayer.Character
+        if character then
+            local bomb = character:FindFirstChild(bombName)
+            if bomb then
+                bomb.Parent = LocalPlayer.Backpack or character
+            end
+        end
+    end)
+end
+
+local function GetAnyBomb()
+    local character = LocalPlayer.Character
+    if not character then return false, nil end
+    
+    for _, name in ipairs(BOMB_NAMES) do
+        local bomb = character:FindFirstChild(name)
+        if bomb then return true, bomb end
+    end
+    
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        for _, name in ipairs(BOMB_NAMES) do
+            local bomb = backpack:FindFirstChild(name)
+            if bomb then
+                bomb.Parent = character
+                return true, bomb
+            end
+        end
+    end
+    
+    local success = false
+    local attempts = 0
+    while not success and attempts < 3 do
+        attempts = attempts + 1
+        local ok = pcall(function()
+            ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer("FakeBomb")
+        end)
+        if ok then 
+            success = true
+            break
+        end
+        task.wait(0.1)
+    end
+    
+    if success then
+        for _ = 1, 5 do
+            for _, name in ipairs(BOMB_NAMES) do
+                local bomb = character:FindFirstChild(name)
+                if bomb then return true, bomb end
+                if backpack then
+                    bomb = backpack:FindFirstChild(name)
+                    if bomb then
+                        bomb.Parent = character
+                        return true, bomb
+                    end
+                end
+            end
+            task.wait(0.05)
+        end
+    end
+    
+    return false, nil
+end
+
+local function IsHoldingBomb()
+    local character = LocalPlayer.Character
+    if not character then return false end
+    
+    for _, name in ipairs(BOMB_NAMES) do
+        if character:FindFirstChild(name) then
+            return true
+        end
+    end
+    return false
+end
+
+local function FastBombJump()
+    if not IsPlayerInAir() then return end
+    if BombJumpState.onCooldown or BombJumpState.debounce or BombJumpState.justRespawned then return end
+    BombJumpState.debounce = true
+    
+    local success, bomb = GetAnyBomb()
+    
+    if success and bomb then
+        local position = GetCenterPosition()
+        if position then
+            local remote = bomb:FindFirstChild("Remote")
+            if remote then
+                pcall(function()
+                    remote:FireServer(CFrame.new(position), 50)
+                end)
+            end
+            
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
+                local currentVelocity = root.AssemblyLinearVelocity
+                root.AssemblyLinearVelocity = Vector3.new(
+                    currentVelocity.X, 
+                    currentVelocity.Y + BombJumpState.power, 
+                    currentVelocity.Z
+                )
+            end
+            
+            MakeCharacterJump()
+            UnequipBomb(bomb.Name)
+            
+            task.spawn(function()
+                task.wait(0.1)
+                StartBombCooldown()
+            end)
+        end
+    end
+    
+    task.spawn(function()
+        task.wait(0.5)
+        BombJumpState.debounce = false
+    end)
+end
 
 -- ==============================================
 -- WALLHOP СИСТЕМА
@@ -2293,10 +2239,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if BombJumpState.enabled then
             BombJumpState.bindButton = BindableButtons.Buttons["bombjump_bind"]
             BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
-            print("💣 Bomb Jump: ON")
         else
             BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
-            print("💣 Bomb Jump: OFF")
         end
     end
     
@@ -2361,4 +2305,4 @@ print("  [G] - Wall Check")
 print("  [E] - Outline")
 print("  [B] - Bomb Jump")
 print("  [R] - Open/Close RT GUI")
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")w
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
