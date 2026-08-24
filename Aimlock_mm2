@@ -1,7 +1,8 @@
--- MM2 Murderer Aim Lock V2.6 + OUTLINE (Sheriff/Murderer/Innocent)
+-- MM2 Murderer Aim Lock V2.6 + OUTLINE + BOMB JUMP+
 -- FIXED: Автообновление после раунда
 -- FIXED: Ускоренное обновление Outline
 -- FIXED: Мгновенное появление Outline при входе игрока
+-- ADDED: Bomb Jump+ система (обычная и золотая бомба)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -9,6 +10,8 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==============================================
@@ -127,6 +130,18 @@ local __OUTLINE_COLOR = ColorSequence.new({
     ColorSequenceKeypoint.new(0,   __PCLR(1.0, 0.0, 0.0)),
     ColorSequenceKeypoint.new(0.6, __PCLR(0.8, 0.0, 0.2)),
     ColorSequenceKeypoint.new(1,   __PCLR(0.6, 0.0, 0.3))
+})
+
+local __GOLD_NORMAL_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 215, 0)),
+    ColorSequenceKeypoint.new(0.6, __RGB(255, 140, 0)),
+    ColorSequenceKeypoint.new(1,   __RGB(184, 134, 11))
+})
+
+local __GOLD_WAIT_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 69, 0)),
+    ColorSequenceKeypoint.new(0.6, __RGB(139, 69, 19)),
+    ColorSequenceKeypoint.new(1,   __RGB(160, 82, 45))
 })
 
 local muteButtonSounds = false
@@ -250,7 +265,9 @@ function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType)
 
     local Stroke = Instance.new("UIGradient", ImageButton)
     Stroke.Name = "@Stroke"
-    if colorType == "wall" then
+    if isGold then
+        Stroke.Color = __GOLD_NORMAL_COLOR
+    elseif colorType == "wall" then
         Stroke.Color = __WALL_COLOR
     elseif colorType == "outline" then
         Stroke.Color = __OUTLINE_COLOR
@@ -260,7 +277,7 @@ function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType)
 
     local ripple = Instance.new("Frame")
     ripple.Name = "@ripple"
-    ripple.BackgroundColor3 = __RGB(0, 155, 255)
+    ripple.BackgroundColor3 = isGold and __RGB(255, 215, 0) or __RGB(0, 155, 255)
     ripple.BackgroundTransparency = 0.5
     ripple.Size = __UD2(0, 0, 0, 0)
     ripple.AnchorPoint = __V2(0.5, 0.5)
@@ -293,13 +310,22 @@ function BindableButtons.DeleteBButton(id)
     end
 end
 
-function BindableButtons.UpdateBButtonText(id, text)
+function BindableButtons.UpdateBButtonText(id, text, isWaiting, isGold)
     local btn = BindableButtons.Buttons[id]
     if not btn then return end
     
     local textLabel = btn:FindFirstChild("@Text")
     if textLabel then
         textLabel.Text = text
+    end
+    
+    local stroke = btn:FindFirstChild("@Stroke")
+    if stroke then
+        if isGold then
+            stroke.Color = isWaiting and __GOLD_WAIT_COLOR or __GOLD_NORMAL_COLOR
+        else
+            stroke.Color = isWaiting and __WALL_COLOR or __NORMAL_COLOR
+        end
     end
 end
 
@@ -536,10 +562,9 @@ end
 -- ==============================================
 local OutlinedPlayers = {}
 local OutlineMaid = Maid.new()
-local OutlineUpdateRate = 0.05 -- Ускорено с 0.15 до 0.05
+local OutlineUpdateRate = 0.05
 local LastOutlineUpdate = 0
 
--- Отслеживание подключений к CharacterAdded для каждого игрока
 local PlayerConnections = {}
 
 local function GetOutlineColor(role, isDead)
@@ -589,14 +614,12 @@ local function ApplyOutline(plr)
     local isDead = (role == "Dead" or role == "Unknown" or role == nil)
     local inGame = IsPlayerInGame(plr)
     
-    -- Если игрок мёртв или не в игре - не показываем Outline
     if isDead or not inGame then
         return
     end
     
     local color = GetOutlineColor(role, false)
     
-    -- Создаём Highlight
     local highlight = Instance.new("Highlight")
     highlight.Name = "Outline_Highlight"
     highlight.FillTransparency = 1
@@ -606,7 +629,6 @@ local function ApplyOutline(plr)
     highlight.Adornee = plr.Character
     highlight.Parent = plr.Character
     
-    -- Billboard с именем и ролью
     local head = plr.Character:FindFirstChild("Head")
     local billboard = nil
     local nameLabel = nil
@@ -652,14 +674,11 @@ local function RemoveOutline(plr)
     end
 end
 
--- Функция полного обновления Outline (для нового раунда)
 local function FullRefreshOutline()
-    -- Удаляем все старые Outline
     for plr, _ in pairs(OutlinedPlayers) do
         RemoveOutline(plr)
     end
     
-    -- Создаём заново для всех живых игроков
     if OutlineEnabled then
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
@@ -683,12 +702,10 @@ local function UpdateOutline()
                 local inGame = IsPlayerInGame(plr)
                 
                 if isDead or not inGame then
-                    -- Игрок мёртв или не в игре - удаляем Outline
                     if OutlinedPlayers[plr] then
                         RemoveOutline(plr)
                     end
                 else
-                    -- Игрок жив - обновляем или создаём Outline
                     if OutlinedPlayers[plr] then
                         local data = OutlinedPlayers[plr]
                         if data.Role ~= role then
@@ -709,7 +726,6 @@ local function UpdateOutline()
             end
         end
     else
-        -- Если Outline выключен - удаляем всё
         for plr, _ in pairs(OutlinedPlayers) do
             RemoveOutline(plr)
         end
@@ -726,46 +742,35 @@ local function OutlineUpdateLoop()
     UpdateOutline()
 end
 
--- Обработка добавления нового игрока (МГНОВЕННО)
 local function SetupPlayer(plr)
     if plr == LocalPlayer then return end
     
-    -- Удаляем старые подключения
     if PlayerConnections[plr] then
         PlayerConnections[plr]:Disconnect()
         PlayerConnections[plr] = nil
     end
     
-    -- ПЕРВИЧНОЕ ПРИМЕНЕНИЕ Outline СРАЗУ после добавления игрока
     if OutlineEnabled then
-        -- Ждём немного для загрузки персонажа (но недолго)
         task.wait(0.05)
         
-        -- Проверяем, есть ли уже персонаж
         if plr.Character then
             local role = GetPlayerRole(plr)
             if role and role ~= "Dead" and role ~= "Unknown" then
                 if IsPlayerInGame(plr) then
                     ApplyOutline(plr)
-                    print("🎯 Outline применён для нового игрока: " .. plr.Name)
                 end
             end
         end
         
-        -- Подписываемся на CharacterAdded для будущих появлений
         local conn = plr.CharacterAdded:Connect(function()
-            -- Мгновенное применение Outline при появлении персонажа
-            task.wait(0.05) -- Минимальная задержка
+            task.wait(0.05)
             
             if OutlineEnabled then
-                -- Удаляем старый Outline
                 RemoveOutline(plr)
-                -- Создаём новый
                 local role = GetPlayerRole(plr)
                 if role and role ~= "Dead" and role ~= "Unknown" then
                     if IsPlayerInGame(plr) then
                         ApplyOutline(plr)
-                        print("🔄 Outline обновлён для игрока: " .. plr.Name)
                     end
                 end
             end
@@ -774,7 +779,6 @@ local function SetupPlayer(plr)
         PlayerConnections[plr] = conn
         OutlineMaid:GiveTask(conn)
     else
-        -- Если Outline выключен, просто подписываемся на CharacterAdded
         local conn = plr.CharacterAdded:Connect(function()
             if OutlineEnabled then
                 task.wait(0.05)
@@ -793,30 +797,24 @@ local function SetupPlayer(plr)
     end
 end
 
--- Обработка существующих игроков (при загрузке скрипта)
 for _, plr in ipairs(Players:GetPlayers()) do
     if plr ~= LocalPlayer then
         SetupPlayer(plr)
     end
 end
 
--- Обработка НОВЫХ игроков (мгновенное применение)
 Players.PlayerAdded:Connect(function(plr)
-    -- Мгновенно обрабатываем нового игрока
     SetupPlayer(plr)
     
-    -- Дополнительная проверка через 0.1 сек (на случай если персонаж ещё не загружен)
     task.wait(0.1)
     if OutlineEnabled and plr.Character and not OutlinedPlayers[plr] then
         local role = GetPlayerRole(plr)
         if role and role ~= "Dead" and role ~= "Unknown" and IsPlayerInGame(plr) then
             ApplyOutline(plr)
-            print("🔁 Outline применён для нового игрока (повторно): " .. plr.Name)
         end
     end
 end)
 
--- Обработка удаления игроков
 Players.PlayerRemoving:Connect(function(plr)
     RemoveOutline(plr)
     if PlayerConnections[plr] then
@@ -825,18 +823,14 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
--- Обработка смены карты/раунда
 local function OnRoundChange()
-    -- Минимальная задержка после смены раунда
     task.wait(0.2)
     
     if OutlineEnabled then
-        print("🔄 Обновление Outline после раунда...")
         FullRefreshOutline()
     end
 end
 
--- Отслеживаем смену раунда
 local LastPlayerCount = #Players:GetPlayers()
 Players.PlayerAdded:Connect(function()
     task.wait(0.1)
@@ -851,6 +845,376 @@ Players.PlayerRemoving:Connect(function()
     if #Players:GetPlayers() ~= LastPlayerCount then
         LastPlayerCount = #Players:GetPlayers()
         OnRoundChange()
+    end
+end)
+
+-- ==============================================
+-- BOMB JUMP+ СИСТЕМА
+-- ==============================================
+local BombJumpSystem = {}
+BombJumpSystem.__index = BombJumpSystem
+
+-- Расширенный список имен бомб
+local BOMB_NAMES = {
+    "FakeBomb", 
+    "Bomb", 
+    "GiftBomb", 
+    "PresentBomb",
+    "Snowball",
+    "CandyBomb"
+}
+
+local function CreateBombJumpSystem(config)
+    local bombConfig = {
+        Cooldown = config.cooldown or 22,
+        Power = config.power or 58,
+        IsGold = config.isGold or false,
+        DisplayName = config.displayName or "Bomb Jump"
+    }
+    
+    local state = {
+        enabled = false,
+        onCooldown = false,
+        debounce = false,
+        autoGetBomb = false,
+        justRespawned = false,
+        activeTouches = {},
+        bindButton = nil
+    }
+    
+    local systemMaid = Maid.new()
+    RootMaid:GiveTask(systemMaid)
+    
+    local Sounds = {
+        Click = Instance.new("Sound"),
+        Cooldown = Instance.new("Sound")
+    }
+    Sounds.Click.SoundId = "rbxassetid://6895079853"
+    Sounds.Click.Volume = 1.0
+    Sounds.Cooldown.SoundId = "rbxassetid://138090596"
+    Sounds.Cooldown.Volume = 1.0
+    
+    local function PlaySound(snd)
+        pcall(function()
+            if snd then
+                SoundService:PlayLocalSound(snd)
+            end
+        end)
+    end
+    
+    local function IsPlayerInAir()
+        local character = LocalPlayer.Character
+        if not character then return false end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        if not humanoid then return false end
+        
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return false end
+        
+        local state = humanoid:GetState()
+        if state == Enum.HumanoidStateType.Jumping or 
+           state == Enum.HumanoidStateType.FallingDown or
+           state == Enum.HumanoidStateType.Freefall then
+            return true
+        end
+        
+        local velocityY = rootPart.Velocity.Y
+        return math.abs(velocityY) > 0.5
+    end
+    
+    local function ResetCooldown()
+        state.onCooldown = false
+        if state.bindButton then
+            BindableButtons.UpdateBButtonText(config.bindButtonId, 
+                config.isGold and "GBJ" or "BJ", false, config.isGold)
+        end
+    end
+    
+    local function StartCooldown()
+        state.onCooldown = true
+        state.debounce = false
+        
+        if state.bindButton then
+            BindableButtons.UpdateBButtonText(config.bindButtonId, 
+                "Wait", true, config.isGold)
+        end
+        
+        task.spawn(function()
+            for i = bombConfig.Cooldown, 1, -1 do
+                if not state.onCooldown then break end
+                if state.bindButton then
+                    BindableButtons.UpdateBButtonText(config.bindButtonId, 
+                        tostring(i), true, config.isGold)
+                end
+                task.wait(1)
+            end
+            if state.onCooldown then ResetCooldown() end
+        end)
+    end
+    
+    local function GetCenterPosition()
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local root = character.HumanoidRootPart
+            local lookDir = Workspace.CurrentCamera.CFrame.LookVector
+            return root.Position + (lookDir * 3) + Vector3.new(0, -2, 0)
+        end
+        return nil
+    end
+    
+    local function MakeCharacterJump()
+        local character = LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end
+    
+    local function UnequipBomb(bombName)
+        task.spawn(function()
+            task.wait(0.5)
+            local character = LocalPlayer.Character
+            if character then
+                local bomb = character:FindFirstChild(bombName)
+                if bomb then
+                    bomb.Parent = LocalPlayer.Backpack or character
+                end
+            end
+        end)
+    end
+    
+    local function GetAnyBomb(bombName)
+        local character = LocalPlayer.Character
+        if not character then return false, nil end
+        
+        local bombNamesToCheck = {bombName}
+        if bombName == "FakeBomb" then
+            bombNamesToCheck = BOMB_NAMES
+        end
+        
+        for _, name in ipairs(bombNamesToCheck) do
+            local bomb = character:FindFirstChild(name)
+            if bomb then return true, bomb end
+        end
+        
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack then
+            for _, name in ipairs(bombNamesToCheck) do
+                local bomb = backpack:FindFirstChild(name)
+                if bomb then
+                    bomb.Parent = character
+                    return true, bomb
+                end
+            end
+        end
+        
+        local success = false
+        local attempts = 0
+        while not success and attempts < 3 do
+            attempts = attempts + 1
+            local ok = pcall(function()
+                ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer(bombName)
+            end)
+            if ok then 
+                success = true
+                break
+            end
+            task.wait(0.1)
+        end
+        
+        if success then
+            for _ = 1, 5 do
+                for _, name in ipairs(bombNamesToCheck) do
+                    local bomb = character:FindFirstChild(name)
+                    if bomb then return true, bomb end
+                    if backpack then
+                        bomb = backpack:FindFirstChild(name)
+                        if bomb then
+                            bomb.Parent = character
+                            return true, bomb
+                        end
+                    end
+                end
+                task.wait(0.05)
+            end
+        end
+        
+        return false, nil
+    end
+    
+    local function IsHoldingBomb(bombName)
+        local character = LocalPlayer.Character
+        if not character then return false end
+        
+        local bombNamesToCheck = {bombName}
+        if bombName == "FakeBomb" then
+            bombNamesToCheck = BOMB_NAMES
+        end
+        
+        for _, name in ipairs(bombNamesToCheck) do
+            if character:FindFirstChild(name) then
+                return true
+            end
+        end
+        return false
+    end
+    
+    local function FastBombJump()
+        if not IsPlayerInAir() then return end
+        if state.onCooldown or state.debounce or state.justRespawned then return end
+        state.debounce = true
+        
+        local success, bomb = GetAnyBomb(config.bombName)
+        
+        if success and bomb then
+            local position = GetCenterPosition()
+            if position then
+                local remote = bomb:FindFirstChild("Remote")
+                if remote then
+                    PlaySound(Sounds.Click)
+                    pcall(function()
+                        remote:FireServer(CFrame.new(position), 50)
+                    end)
+                end
+                
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local currentVelocity = root.AssemblyLinearVelocity
+                    root.AssemblyLinearVelocity = Vector3.new(
+                        currentVelocity.X, 
+                        currentVelocity.Y + bombConfig.Power, 
+                        currentVelocity.Z
+                    )
+                end
+                
+                MakeCharacterJump()
+                UnequipBomb(bomb.Name)
+                
+                task.spawn(function()
+                    task.wait(0.1)
+                    StartCooldown()
+                end)
+            end
+        end
+        
+        task.spawn(function()
+            task.wait(0.5)
+            state.debounce = false
+        end)
+    end
+    
+    -- Создаем кнопку
+    if config.createButton then
+        local shortName = config.isGold and "GBJ" or "BJ"
+        BindableButtons.AddBButton(config.bindButtonId, shortName, FastBombJump, config.isGold)
+        state.bindButton = BindableButtons.Buttons[config.bindButtonId]
+        if state.bindButton then
+            local screen = Workspace.CurrentCamera.ViewportSize
+            state.bindButton.Size = __UD2(0.10 * (screen.Y / screen.X), 0, 0.10, 0)
+        end
+    end
+    
+    -- Обработка ввода
+    local TAP_MOVEMENT_THRESHOLD = 10
+    local TAP_TIME_THRESHOLD = 0.3
+    
+    systemMaid:GiveTasks(
+        UserInputService.InputBegan:Connect(function(input, gp)
+            if gp then return end
+            if input.UserInputType == Enum.UserInputType.Touch or 
+               input.UserInputType == Enum.UserInputType.MouseButton1 then
+                state.activeTouches[input] = {
+                    startPosition = input.Position, 
+                    startTime = tick(), 
+                    moved = false
+                }
+            end
+        end),
+        UserInputService.InputChanged:Connect(function(input)
+            local data = state.activeTouches[input]
+            if data and (input.Position - data.startPosition).Magnitude > TAP_MOVEMENT_THRESHOLD then
+                data.moved = true
+            end
+        end),
+        UserInputService.InputEnded:Connect(function(input, gp)
+            if gp then 
+                state.activeTouches[input] = nil 
+                return 
+            end
+            local data = state.activeTouches[input]
+            if data and not data.moved and tick() - data.startTime <= TAP_TIME_THRESHOLD then
+                if state.enabled and not state.onCooldown and not state.debounce then
+                    if IsHoldingBomb(config.bombName) and IsPlayerInAir() then
+                        FastBombJump()
+                    end
+                end
+            end
+            state.activeTouches[input] = nil
+        end),
+        LocalPlayer.CharacterAdded:Connect(function()
+            ResetCooldown()
+            state.activeTouches = {}
+            state.justRespawned = true
+            task.wait(1)
+            state.justRespawned = false
+            if state.autoGetBomb then
+                task.wait(0.2)
+                pcall(function() 
+                    ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer(config.bombName) 
+                end)
+            end
+        end)
+    )
+    
+    return {
+        GetState = function() return state end,
+        FastBombJump = FastBombJump,
+        ResetCooldown = ResetCooldown,
+        SetEnabled = function(bool) state.enabled = bool end,
+        SetAutoGet = function(bool) 
+            state.autoGetBomb = bool
+            if bool then
+                pcall(function() 
+                    ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer(config.bombName) 
+                end)
+            end
+        end,
+        ToggleButton = function(visible)
+            if state.bindButton then
+                state.bindButton.Visible = visible
+            end
+        end
+    }
+end
+
+-- Создаем системы Bomb Jump
+local bombJump = CreateBombJumpSystem({
+    bombName = "FakeBomb",
+    cooldown = 22,
+    power = 58,
+    isGold = false,
+    displayName = "Bomb Jump",
+    bindButtonId = "bombjump_bind",
+    createButton = true
+})
+
+-- Золотая бомба (только для модов)
+local goldBombJump = nil
+pcall(function()
+    if game.PlaceId == 142823291 or game.PlaceId == 3248071827 then -- MM2 или Modded
+        goldBombJump = CreateBombJumpSystem({
+            bombName = "GoldBomb",
+            cooldown = 4,
+            power = 65,
+            isGold = true,
+            displayName = "Gold Bomb Jump",
+            bindButtonId = "goldbombjump_bind",
+            createButton = true
+        })
     end
 end)
 
@@ -917,19 +1281,22 @@ end
 -- ==============================================
 local function CreateConsoleMenu()
     print("=" .. string.rep("=", 40))
-    print("  🎯 MM2 AIMLOCK V2.6 | OUTLINE EDITION")
+    print("  🎯 MM2 AIMLOCK V2.6 | OUTLINE | BOMB JUMP+")
     print("=" .. string.rep("=", 40))
     print("  [1] Toggle Aim Lock    [Currently: " .. (AimLockEnabled and "ON" or "OFF") .. "]")
     print("  [2] Toggle Wall Check  [Currently: " .. (WallCheckEnabled and "ON" or "OFF") .. "]")
     print("  [3] Toggle Outline     [Currently: " .. (OutlineEnabled and "ON" or "OFF") .. "]")
     print("  [4] Target Part        [Currently: " .. TargetPart .. "]")
     print("  [5] Prediction Level   [Currently: " .. PredictionLevel .. "]")
-    print("  [6] Print Status")
-    print("  [7] Exit Menu")
+    print("  [6] Toggle Bomb Jump   [Currently: " .. (bombJump.GetState().enabled and "ON" or "OFF") .. "]")
+    print("  [7] Toggle Gold Bomb   [Currently: " .. (goldBombJump and goldBombJump.GetState().enabled and "ON" or "OFF") .. "]")
+    print("  [8] Print Status")
+    print("  [9] Exit Menu")
     print("=" .. string.rep("=", 40))
     print("💡 Quick Toggle Aim: Press 'T'")
     print("💡 Quick Toggle WallCheck: Press 'G'")
     print("💡 Quick Toggle Outline: Press 'E'")
+    print("💣 Bomb Jump: Tap screen in air with bomb")
     print("🔄 Outline обновляется каждые 0.05 сек")
     print("⚡ Outline появляется МГНОВЕННО при входе игрока")
 end
@@ -940,7 +1307,7 @@ end
 local function UpdateAimButtonState()
     local btn = BindableButtons.Buttons["aim_toggle"]
     if not btn then return end
-    BindableButtons.UpdateBButtonText("aim_toggle", AimLockEnabled and "Aim:ON" or "Aim:OFF")
+    BindableButtons.UpdateBButtonText("aim_toggle", AimLockEnabled and "Aim:ON" or "Aim:OFF", false, false)
     BindableButtons.UpdateBButtonColor("aim_toggle", AimLockEnabled, "aim")
 end
 
@@ -958,7 +1325,7 @@ end
 local function UpdateWallButtonState()
     local btn = BindableButtons.Buttons["wall_toggle"]
     if not btn then return end
-    BindableButtons.UpdateBButtonText("wall_toggle", WallCheckEnabled and "Wall:ON" or "Wall:OFF")
+    BindableButtons.UpdateBButtonText("wall_toggle", WallCheckEnabled and "Wall:ON" or "Wall:OFF", false, false)
     BindableButtons.UpdateBButtonColor("wall_toggle", WallCheckEnabled, "wall")
 end
 
@@ -971,7 +1338,7 @@ end
 local function UpdateOutlineButtonState()
     local btn = BindableButtons.Buttons["outline_toggle"]
     if not btn then return end
-    BindableButtons.UpdateBButtonText("outline_toggle", OutlineEnabled and "OL:ON" or "OL:OFF")
+    BindableButtons.UpdateBButtonText("outline_toggle", OutlineEnabled and "OL:ON" or "OL:OFF", false, false)
     BindableButtons.UpdateBButtonColor("outline_toggle", OutlineEnabled, "outline")
 end
 
@@ -986,6 +1353,22 @@ local function ToggleOutline()
     end
     UpdateOutlineButtonState()
     print("👁️ Outline: " .. (OutlineEnabled and "ENABLED" or "DISABLED"))
+end
+
+local function ToggleBombJump()
+    local state = bombJump.GetState()
+    bombJump.SetEnabled(not state.enabled)
+    print("💣 Bomb Jump: " .. (not state.enabled and "ENABLED" or "DISABLED"))
+end
+
+local function ToggleGoldBomb()
+    if goldBombJump then
+        local state = goldBombJump.GetState()
+        goldBombJump.SetEnabled(not state.enabled)
+        print("💣 Gold Bomb Jump: " .. (not state.enabled and "ENABLED" or "DISABLED"))
+    else
+        print("❌ Gold Bomb недоступна в этой версии игры")
+    end
 end
 
 local function CreateButtons()
@@ -1034,10 +1417,12 @@ local function DeleteButtons()
     BindableButtons.DeleteBButton("aim_toggle")
     BindableButtons.DeleteBButton("wall_toggle")
     BindableButtons.DeleteBButton("outline_toggle")
+    BindableButtons.DeleteBButton("bombjump_bind")
+    BindableButtons.DeleteBButton("goldbombjump_bind")
 end
 
 local function ToggleButtonsVisibility()
-    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle"}) do
+    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle", "bombjump_bind", "goldbombjump_bind"}) do
         local btn = BindableButtons.Buttons[id]
         if btn then
             btn.Visible = ShowBindableButton
@@ -1062,6 +1447,14 @@ local function SetupKeybinds()
         
         if input.KeyCode == Enum.KeyCode.E then
             ToggleOutline()
+        end
+        
+        if input.KeyCode == Enum.KeyCode.B then
+            ToggleBombJump()
+        end
+        
+        if input.KeyCode == Enum.KeyCode.Z then
+            ToggleGoldBomb()
         end
     end)
     
@@ -1109,12 +1502,18 @@ end)
 -- ==============================================
 -- ВЫВОД МЕНЮ
 -- ==============================================
-print("✅ MM2 Aim Lock V2.6 + OUTLINE Loaded!")
+print("✅ MM2 Aim Lock V2.6 + OUTLINE + BOMB JUMP+ Loaded!")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("🎯 ТРИ КНОПКИ НА ЭКРАНЕ:")
 print("  🔵 Aim:ON/OFF  -  Вкл/Выкл автонаведение")
 print("  🔵 Wall:ON/OFF -  Вкл/Выкл проверку видимости")
 print("  🔴 OL:ON/OFF   -  Вкл/Выкл Outline подсветку")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("💣 BOMB JUMP+ КНОПКИ:")
+print("  🟡 BJ - Обычная бомба (кулдаун 22с)")
+if goldBombJump then
+    print("  🟡 GBJ - Золотая бомба (кулдаун 4с)")
+end
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("🎨 ЦВЕТА OUTLINE:")
 print("  🔴 Красный  - Murderer (убийца)")
@@ -1124,21 +1523,31 @@ print("━━━━━━━━━━━━━━━━━━━━━━━━�
 print("🚀 УЛУЧШЕННОЕ ОБНОВЛЕНИЕ OUTLINE:")
 print("  ⚡ Частота обновления: каждые 0.05 сек")
 print("  ⚡ Мгновенное появление при входе игрока")
-print("  ⚡ Авто-обновление после каждого раунда")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
 print("  [T] - Toggle Aim Lock")
 print("  [G] - Toggle Wall Check")
 print("  [E] - Toggle Outline")
+print("  [B] - Toggle Bomb Jump")
+if goldBombJump then
+    print("  [Z] - Toggle Gold Bomb Jump")
+end
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("💡 Bomb Jump: Нажмите на экран в воздухе с бомбой в руках")
 CreateConsoleMenu()
 
 _G.MM2AimMenu = CreateConsoleMenu
 _G.MM2Toggle = ToggleAimLock
 _G.MM2Wall = ToggleWallCheck
 _G.MM2Outline = ToggleOutline
+_G.MM2BombJump = ToggleBombJump
+_G.MM2GoldBomb = ToggleGoldBomb
 
 print("🔧 Type 'MM2AimMenu()' to show menu")
 print("🔧 Type 'MM2Toggle()' to toggle aim")
 print("🔧 Type 'MM2Wall()' to toggle wallcheck")
 print("🔧 Type 'MM2Outline()' to toggle outline")
+print("🔧 Type 'MM2BombJump()' to toggle bomb jump")
+if goldBombJump then
+    print("🔧 Type 'MM2GoldBomb()' to toggle gold bomb jump")
+end
