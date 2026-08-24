@@ -1930,7 +1930,65 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- СОЗДАНИЕ GUI ДЛЯ RESET (ПРАВИЛЬНОЕ РАСПОЛОЖЕНИЕ)
+-- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ (ИСПРАВЛЕННАЯ)
+-- ==============================================
+local function MakeResetGuiDraggable(frame)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    local parentSize = nil
+    
+    -- Получаем размер родителя один раз
+    local function updateParentSize()
+        if frame and frame.Parent then
+            parentSize = frame.Parent.AbsoluteSize
+        end
+    end
+    
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            updateParentSize()
+        end
+    end)
+    
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    
+    __UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
+                         input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            if parentSize and parentSize.X > 0 and parentSize.Y > 0 then
+                frame.Position = __UD2(
+                    startPos.X.Scale + (delta.X / parentSize.X),
+                    0,
+                    startPos.Y.Scale + (delta.Y / parentSize.Y),
+                    0
+                )
+            end
+        end
+    end)
+    
+    -- Обновляем размер при изменении окна
+    frame.AncestryChanged:Connect(function()
+        updateParentSize()
+    end)
+    
+    -- Инициализация
+    task.wait(0.1)
+    updateParentSize()
+end
+
+-- ==============================================
+-- СОЗДАНИЕ GUI ДЛЯ RESET
 -- ==============================================
 local function CreateResetGUIElements()
     -- Главный фрейм
