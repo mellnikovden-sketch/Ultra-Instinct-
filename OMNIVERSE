@@ -1,12 +1,12 @@
 --[[
     ═══════════════════════════════════════════════════════════
-    🔥 OMEGA ULTIMATE v5.3 - УЛУЧШЕННЫЙ СТИЛЬ 🔥
+    🔥 OMEGA ULTIMATE v5.3 - СТИЛЬ OVERDRIVE 🔥
     ═══════════════════════════════════════════════════════════
-    ОСОБЕННОСТИ:
-    • Кнопка в стиле вашего экрана
-    • Широкое меню (450px)
-    • Монохромный стиль
-    • Полная стабильность
+    СТИЛЬ:
+    • Как на вашем скриншоте
+    • Сине-фиолетовая тема
+    • Акцентные элементы
+    • Кнопка открытия в стиле
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -26,18 +26,22 @@ _G.Menu = {
 }
 
 -- ═══════════════════════════════════════════════════════════
--- МОНОХРОМНЫЕ ЦВЕТА
+-- ЦВЕТА (СТИЛЬ OVERDRIVE)
 -- ═══════════════════════════════════════════════════════════
 
 local COLORS = {
-    bg = Color3.fromRGB(0, 0, 0),
-    bgSecondary = Color3.fromRGB(20, 20, 20),
-    bgHover = Color3.fromRGB(40, 40, 40),
-    border = Color3.fromRGB(255, 255, 255),
-    accent = Color3.fromRGB(255, 255, 255),
-    text = Color3.fromRGB(200, 200, 200),
-    textDim = Color3.fromRGB(150, 150, 150),
+    bg = Color3.fromRGB(10, 8, 20),
+    bgSecondary = Color3.fromRGB(20, 16, 35),
+    bgHover = Color3.fromRGB(40, 30, 60),
+    border = Color3.fromRGB(80, 60, 180),
+    accent = Color3.fromRGB(120, 80, 255),
+    accentLight = Color3.fromRGB(180, 150, 255),
+    text = Color3.fromRGB(200, 190, 220),
+    textDim = Color3.fromRGB(150, 140, 170),
     textBright = Color3.fromRGB(255, 255, 255),
+    success = Color3.fromRGB(80, 255, 150),
+    warning = Color3.fromRGB(255, 200, 80),
+    danger = Color3.fromRGB(255, 80, 80),
 }
 
 -- ═══════════════════════════════════════════════════════════
@@ -51,16 +55,16 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ═══════════════════════════════════════════════════════════
--- КНОПКА ОТКРЫТИЯ (СТИЛЬ КАК НА ВАШЕМ ЭКРАНЕ)
+-- КНОПКА ОТКРЫТИЯ (В СТИЛЕ OVERDRIVE)
 -- ═══════════════════════════════════════════════════════════
 
 local OpenButton = Instance.new("ImageButton")
 OpenButton.Size = UDim2.new(0, 55, 0, 55)
 OpenButton.Position = UDim2.new(0.02, 0, 0.86, 0)
-OpenButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-OpenButton.BackgroundTransparency = 0
+OpenButton.BackgroundColor3 = COLORS.bgSecondary
+OpenButton.BackgroundTransparency = 0.1
 OpenButton.Image = "rbxassetid://6031091071"
-OpenButton.ImageColor3 = Color3.fromRGB(0, 0, 0)
+OpenButton.ImageColor3 = COLORS.accent
 OpenButton.ScaleType = Enum.ScaleType.Fit
 OpenButton.Parent = ScreenGui
 
@@ -68,15 +72,30 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
+local OpenStroke = Instance.new("UIStroke")
+OpenStroke.Color = COLORS.border
+OpenStroke.Thickness = 2
+OpenStroke.Transparency = 0.3
+OpenStroke.Parent = OpenButton
+
+local OpenLabel = Instance.new("TextLabel")
+OpenLabel.Size = UDim2.new(1, 0, 1, 0)
+OpenLabel.BackgroundTransparency = 1
+OpenLabel.Text = "⚡"
+OpenLabel.TextColor3 = COLORS.accent
+OpenLabel.TextSize = 26
+OpenLabel.Font = Enum.Font.Jura
+OpenLabel.Parent = OpenButton
+
 -- ═══════════════════════════════════════════════════════════
--- ГЛАВНОЕ МЕНЮ (ШИРОКОЕ - 450px)
+-- ГЛАВНОЕ МЕНЮ (СТИЛЬ OVERDRIVE)
 -- ═══════════════════════════════════════════════════════════
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 460)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -230)
+MainFrame.Size = UDim2.new(0, 450, 0, 480)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -240)
 MainFrame.BackgroundColor3 = COLORS.bg
-MainFrame.BackgroundTransparency = 0
+MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Visible = false
@@ -89,18 +108,29 @@ Corner.Parent = MainFrame
 
 local Stroke = Instance.new("UIStroke")
 Stroke.Color = COLORS.border
-Stroke.Thickness = 1.5
-Stroke.Transparency = 0.15
+Stroke.Thickness = 2
+Stroke.Transparency = 0.2
 Stroke.Parent = MainFrame
+
+-- Градиент для обводки
+local StrokeGradient = Instance.new("UIGradient")
+StrokeGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, COLORS.border),
+    ColorSequenceKeypoint.new(0.3, COLORS.accent),
+    ColorSequenceKeypoint.new(0.6, COLORS.border),
+    ColorSequenceKeypoint.new(0.8, Color3.fromRGB(60, 40, 140)),
+    ColorSequenceKeypoint.new(1, COLORS.border)
+})
+StrokeGradient.Parent = Stroke
 
 -- ═══════════════════════════════════════════════════════════
 -- ЗАГОЛОВОК
 -- ═══════════════════════════════════════════════════════════
 
 local TitleFrame = Instance.new("Frame")
-TitleFrame.Size = UDim2.new(1, 0, 0, 45)
+TitleFrame.Size = UDim2.new(1, 0, 0, 50)
 TitleFrame.BackgroundColor3 = COLORS.bgSecondary
-TitleFrame.BackgroundTransparency = 0
+TitleFrame.BackgroundTransparency = 0.2
 TitleFrame.BorderSizePixel = 0
 TitleFrame.Parent = MainFrame
 
@@ -108,49 +138,86 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 12)
 TitleCorner.Parent = TitleFrame
 
+-- Заголовок
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
 TitleLabel.Position = UDim2.new(0.05, 0, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "⚡ OMEGA"
-TitleLabel.TextColor3 = COLORS.textBright
+TitleLabel.Text = "⚡ OMEGA ULTIMATE"
+TitleLabel.TextColor3 = COLORS.accentLight
 TitleLabel.TextSize = 18
 TitleLabel.Font = Enum.Font.Jura
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleFrame
 
+-- Версия
+local VersionLabel = Instance.new("TextLabel")
+VersionLabel.Size = UDim2.new(0.3, 0, 1, 0)
+VersionLabel.Position = UDim2.new(0.05, 0, 0, 0)
+VersionLabel.BackgroundTransparency = 1
+VersionLabel.Text = "v5.3"
+VersionLabel.TextColor3 = COLORS.textDim
+VersionLabel.TextSize = 12
+VersionLabel.Font = Enum.Font.Jura
+VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
+VersionLabel.Parent = TitleFrame
+
+-- Кнопка закрытия
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 35, 0, 35)
-CloseBtn.Position = UDim2.new(1, -42, 0, 5)
+CloseBtn.Position = UDim2.new(1, -42, 0, 7)
 CloseBtn.BackgroundTransparency = 1
 CloseBtn.Text = "✕"
 CloseBtn.TextColor3 = COLORS.textDim
-CloseBtn.TextSize = 20
+CloseBtn.TextSize = 18
 CloseBtn.Font = Enum.Font.Jura
 CloseBtn.Parent = TitleFrame
 
 -- ═══════════════════════════════════════════════════════════
--- КОНТЕЙНЕРЫ (УВЕЛИЧЕНЫ)
+-- СТАТУС БАР
+-- ═══════════════════════════════════════════════════════════
+
+local StatusFrame = Instance.new("Frame")
+StatusFrame.Size = UDim2.new(1, 0, 0, 30)
+StatusFrame.Position = UDim2.new(0, 0, 0, 50)
+StatusFrame.BackgroundColor3 = COLORS.bgSecondary
+StatusFrame.BackgroundTransparency = 0.5
+StatusFrame.BorderSizePixel = 0
+StatusFrame.Parent = MainFrame
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -20, 1, 0)
+StatusLabel.Position = UDim2.new(0.02, 0, 0, 0)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "● ONLINE | Players: 0 | Ping: 0ms"
+StatusLabel.TextColor3 = COLORS.success
+StatusLabel.TextSize = 11
+StatusLabel.Font = Enum.Font.Jura
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Parent = StatusFrame
+
+-- ═══════════════════════════════════════════════════════════
+-- КОНТЕЙНЕРЫ
 -- ═══════════════════════════════════════════════════════════
 
 local CategoryContainer = Instance.new("ScrollingFrame")
-CategoryContainer.Size = UDim2.new(0, 120, 1, -45)
-CategoryContainer.Position = UDim2.new(0, 0, 0, 45)
+CategoryContainer.Size = UDim2.new(0, 130, 1, -80)
+CategoryContainer.Position = UDim2.new(0, 0, 0, 80)
 CategoryContainer.BackgroundTransparency = 1
 CategoryContainer.BorderSizePixel = 0
 CategoryContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 CategoryContainer.ScrollBarThickness = 2
-CategoryContainer.ScrollBarImageColor3 = COLORS.textDim
+CategoryContainer.ScrollBarImageColor3 = COLORS.border
 CategoryContainer.Parent = MainFrame
 
 local FunctionContainer = Instance.new("ScrollingFrame")
-FunctionContainer.Size = UDim2.new(1, -125, 1, -45)
-FunctionContainer.Position = UDim2.new(0, 125, 0, 45)
+FunctionContainer.Size = UDim2.new(1, -135, 1, -80)
+FunctionContainer.Position = UDim2.new(0, 135, 0, 80)
 FunctionContainer.BackgroundTransparency = 1
 FunctionContainer.BorderSizePixel = 0
 FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 FunctionContainer.ScrollBarThickness = 3
-FunctionContainer.ScrollBarImageColor3 = COLORS.textDim
+FunctionContainer.ScrollBarImageColor3 = COLORS.border
 FunctionContainer.Parent = MainFrame
 
 -- ═══════════════════════════════════════════════════════════
@@ -220,7 +287,7 @@ local function CreateCategoryButton(name, parent)
         end
         btn.BackgroundTransparency = 0.9
         btn.BackgroundColor3 = COLORS.bgHover
-        btn.TextColor3 = COLORS.textBright
+        btn.TextColor3 = COLORS.accentLight
         
         for _, child in ipairs(FunctionContainer:GetChildren()) do
             if child:IsA("Frame") and child ~= container then
@@ -338,9 +405,9 @@ function _G.Menu:AddToggle(text, callback, category)
     toggle.Activated:Connect(function()
         state = not state
         if state then
-            toggle.BackgroundColor3 = COLORS.textBright
+            toggle.BackgroundColor3 = COLORS.accent
             toggle.Text = "ON"
-            toggle.TextColor3 = COLORS.bg
+            toggle.TextColor3 = COLORS.textBright
         else
             toggle.BackgroundColor3 = COLORS.bgSecondary
             toggle.Text = "OFF"
@@ -363,7 +430,7 @@ function _G.Menu:AddButton(text, callback, category)
     btn.Size = UDim2.new(1, -10, 0, 35)
     btn.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
     btn.BackgroundColor3 = COLORS.bgSecondary
-    btn.BackgroundTransparency = 0
+    btn.BackgroundTransparency = 0.3
     btn.Text = text
     btn.TextColor3 = COLORS.text
     btn.TextSize = 12
@@ -416,7 +483,7 @@ function _G.Menu:AddSlider(text, min, max, default, callback, category)
     
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = COLORS.textBright
+    fill.BackgroundColor3 = COLORS.accent
     fill.Parent = sliderFrame
     
     local fillCorner = Instance.new("UICorner")
@@ -487,7 +554,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     dropdown.Size = UDim2.new(0.6, 0, 1, 0)
     dropdown.Position = UDim2.new(0.4, 0, 0, 0)
     dropdown.BackgroundColor3 = COLORS.bgSecondary
-    dropdown.BackgroundTransparency = 0
+    dropdown.BackgroundTransparency = 0.3
     dropdown.Text = options[1] or "Select"
     dropdown.TextColor3 = COLORS.text
     dropdown.TextSize = 11
@@ -512,7 +579,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
         dropList.Size = UDim2.new(0.6, 0, 0, #options * 25)
         dropList.Position = UDim2.new(0.4, 0, 1, 2)
         dropList.BackgroundColor3 = COLORS.bgSecondary
-        dropList.BackgroundTransparency = 0
+        dropList.BackgroundTransparency = 0.1
         dropList.ClipsDescendants = true
         dropList.Parent = container
         
@@ -560,6 +627,35 @@ OpenButton.Activated:Connect(ToggleMenu)
 CloseBtn.Activated:Connect(ToggleMenu)
 
 -- ═══════════════════════════════════════════════════════════
+-- ОБНОВЛЕНИЕ СТАТУСА
+-- ═══════════════════════════════════════════════════════════
+
+local function UpdateStatus()
+    local count = #Players:GetPlayers()
+    local ping = LocalPlayer:GetNetworkPing()
+    StatusLabel.Text = "● ONLINE | Players: " .. count .. " | Ping: " .. math.floor(ping * 1000) .. "ms"
+end
+
+-- Обновляем статус каждую секунду
+spawn(function()
+    while wait(1) do
+        if MainFrame.Visible then
+            UpdateStatus()
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════
+-- ВРАЩЕНИЕ ГРАДИЕНТА
+-- ═══════════════════════════════════════════════════════════
+
+RunService.RenderStepped:Connect(function()
+    if StrokeGradient and StrokeGradient.Parent then
+        StrokeGradient.Rotation = (StrokeGradient.Rotation + 0.2) % 360
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════
 -- ИНИЦИАЛИЗАЦИЯ
 -- ═══════════════════════════════════════════════════════════
 
@@ -567,31 +663,41 @@ _G.Menu:AddCategory("⚡ Основные")
 _G.Menu:AddCategory("🎯 Цели")
 _G.Menu:AddCategory("⚙️ Настройки")
 _G.Menu:AddCategory("📊 Инфо")
+_G.Menu:AddCategory("🔧 Дополнительно")
 
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 _G.Menu:AddLabel("OMEGA ULTIMATE v5.3", "📊 Инфо")
-_G.Menu:AddLabel("📱 Улучшенный стиль", "📊 Инфо")
+_G.Menu:AddLabel("🎨 Стиль OVERDRIVE", "📊 Инфо")
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 
 -- ДЕМО-ФУНКЦИИ
-_G.Menu:AddToggle("Демо-функция", function(state)
-    print("Демо: " .. (state and "ВКЛ" or "ВЫКЛ"))
+_G.Menu:AddToggle("Включить скрипт", function(state)
+    print("Скрипт: " .. (state and "ВКЛ" or "ВЫКЛ"))
 end, "⚡ Основные")
 
-_G.Menu:AddButton("Тест", function()
-    print("Кнопка нажата!")
-end, "⚡ Основные")
+_G.Menu:AddToggle("Авто-цель", function(state)
+    print("Авто-цель: " .. (state and "ВКЛ" or "ВЫКЛ"))
+end, "🎯 Цели")
 
-_G.Menu:AddSlider("Скорость", 1, 20, 10, function(v)
-    print("Скорость: " .. v)
+_G.Menu:AddButton("Обновить цель", function()
+    print("Цель обновлена!")
+end, "🎯 Цели")
+
+_G.Menu:AddSeparator("⚙️ Настройки")
+_G.Menu:AddSlider("Дистанция", 50, 400, 200, function(v)
+    print("Дистанция: " .. v)
 end, "⚙️ Настройки")
 
-_G.Menu:AddDropdown("Режим", {"Режим A", "Режим B", "Режим C"}, function(s)
+_G.Menu:AddDropdown("Режим цели", {"Ближайший", "Самый дальний", "По ID"}, function(s)
     print("Режим: " .. s)
 end, "⚙️ Настройки")
 
+_G.Menu:AddButton("Тест", function()
+    print("Кнопка нажата!")
+end, "🔧 Дополнительно")
+
 print("════════════════════════════════════════════════════════")
-print("⚡ OMEGA MENU v5.3 - УЛУЧШЕННЫЙ СТИЛЬ")
-print("📱 Кнопка в стиле вашего экрана")
-print("📐 Меню стало шире (450px)")
+print("⚡ OMEGA MENU v5.3 - СТИЛЬ OVERDRIVE")
+print("📱 Стилизовано под ваш скриншот")
+print("🎨 Сине-фиолетовая тема")
 print("════════════════════════════════════════════════════════")
