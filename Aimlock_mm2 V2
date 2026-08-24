@@ -1,6 +1,6 @@
 -- MM2 Murderer Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP
 -- FULL PACKAGE: Aim Lock + Outline + Bomb Jump + Wallhop
--- RESET SYSTEM: Отдельное GUI
+-- RESET SYSTEM: Отдельное GUI с возможностью перетаскивания
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -940,8 +940,7 @@ local function CreateBombJumpSystem(config)
         Cooldown = Instance.new("Sound")
     }
     Sounds.Click.SoundId = "rbxassetid://6895079853"
-    Sounds.Click.Volume = 1.0
-    Sounds.Cooldown.SoundId = "rbxassetid://138090596"
+    Sounds.Click.Volume = 1.0    Sounds.Cooldown.SoundId = "rbxassetid://138090596"
     Sounds.Cooldown.Volume = 1.0
     
     local function PlaySound(snd)
@@ -1930,14 +1929,53 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- СОЗДАНИЕ ОТДЕЛЬНОГО GUI ДЛЯ RESET
+-- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ ДЛЯ RESET GUI
+-- ==============================================
+local function MakeResetGuiDraggable(frame, titleBar)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    
+    titleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
+                         input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            local parentSize = frame.Parent.AbsoluteSize
+            frame.Position = __UD2(
+                startPos.X.Scale + (delta.X / parentSize.X),
+                0,
+                startPos.Y.Scale + (delta.Y / parentSize.Y),
+                0
+            )
+        end
+    end)
+end
+
+-- ==============================================
+-- СОЗДАНИЕ ОТДЕЛЬНОГО GUI ДЛЯ RESET (С ПЕРЕТАСКИВАНИЕМ)
 -- ==============================================
 local function CreateResetGUIElements()
-    -- Главный фрейм
+    -- Главный фрейм (опущен ниже - Y позиция 0.55)
     local frame = Instance.new("Frame")
     frame.Name = "ResetMainFrame"
-    frame.Size = __UD2(0, 350, 0, 500)
-    frame.Position = __UD2(0.5, -175, 0.5, -250)
+    frame.Size = __UD2(0, 350, 0, 450)
+    frame.Position = __UD2(0.5, -175, 0.55, -225) -- Опущено ниже
     frame.AnchorPoint = __V2(0.5, 0.5)
     frame.BackgroundColor3 = __RGB(20, 20, 30)
     frame.BackgroundTransparency = 0.05
@@ -1945,22 +1983,26 @@ local function CreateResetGUIElements()
     frame.ClipsDescendants = true
     frame.Parent = ResetGUI
     
-    -- Заголовок
+    -- Скругление углов
+    Instance.new("UICorner", frame).CornerRadius = __UD(0, 8)
+    
+    -- Заголовок (для перетаскивания)
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
-    titleBar.Size = __UD2(1, 0, 0, 40)
+    titleBar.Size = __UD2(1, 0, 0, 35)
     titleBar.Position = __UD2(0, 0, 0, 0)
     titleBar.BackgroundColor3 = __RGB(40, 0, 50)
     titleBar.BackgroundTransparency = 0.3
     titleBar.BorderSizePixel = 0
     titleBar.Parent = frame
     
+    -- Заголовок с иконкой RT
     local title = Instance.new("TextLabel")
     title.Size = __UD2(1, -40, 1, 0)
     title.Position = __UD2(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.Jura
-    title.Text = "🔄 RESET SYSTEM v3.5"
+    title.Text = "🔄 RT SYSTEM v3.5"  -- Переименовано в RT
     title.TextColor3 = __RGB(255, 100, 100)
     title.TextSize = 18
     title.TextXAlignment = Enum.TextXAlignment.Left
@@ -1970,7 +2012,7 @@ local function CreateResetGUIElements()
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseBtn"
     closeBtn.Size = __UD2(0, 30, 0, 30)
-    closeBtn.Position = __UD2(1, -35, 0, 5)
+    closeBtn.Position = __UD2(1, -35, 0, 2.5)
     closeBtn.BackgroundColor3 = __RGB(200, 0, 0)
     closeBtn.BackgroundTransparency = 0.5
     closeBtn.BorderSizePixel = 0
@@ -1980,16 +2022,21 @@ local function CreateResetGUIElements()
     closeBtn.TextSize = 18
     closeBtn.Parent = titleBar
     
+    Instance.new("UICorner", closeBtn).CornerRadius = __UD(0, 4)
+    
     closeBtn.MouseButton1Click:Connect(function()
         ResetGUI.Enabled = false
         ResetState.resetGuiOpen = false
     end)
     
+    -- Делаем GUI перетаскиваемым
+    MakeResetGuiDraggable(frame, titleBar)
+    
     -- Скроллинг фрейм
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "ScrollFrame"
-    scrollFrame.Size = __UD2(1, -10, 1, -50)
-    scrollFrame.Position = __UD2(0, 5, 0, 45)
+    scrollFrame.Size = __UD2(1, -10, 1, -45)
+    scrollFrame.Position = __UD2(0, 5, 0, 40)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.CanvasSize = __UD2(0, 0, 0, 0)
@@ -2001,20 +2048,20 @@ local function CreateResetGUIElements()
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 5)
+    layout.Padding = UDim.new(0, 4)
     layout.Parent = scrollFrame
     
     -- Функция создания элементов GUI
     local function AddResetButton(text, color, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = __UD2(0.9, 0, 0, 35)
+        btn.Size = __UD2(0.9, 0, 0, 32)
         btn.BackgroundColor3 = color or __RGB(30, 30, 50)
         btn.BackgroundTransparency = 0.3
         btn.BorderSizePixel = 0
         btn.Font = Enum.Font.Jura
         btn.Text = text
         btn.TextColor3 = __RGB(255, 255, 255)
-        btn.TextSize = 14
+        btn.TextSize = 13
         btn.Parent = scrollFrame
         
         Instance.new("UICorner", btn).CornerRadius = __UD(0, 5)
@@ -2025,7 +2072,7 @@ local function CreateResetGUIElements()
     
     local function AddResetToggle(text, getState, setState)
         local container = Instance.new("Frame")
-        container.Size = __UD2(0.9, 0, 0, 35)
+        container.Size = __UD2(0.9, 0, 0, 32)
         container.BackgroundTransparency = 1
         container.Parent = scrollFrame
         
@@ -2036,7 +2083,7 @@ local function CreateResetGUIElements()
         label.Font = Enum.Font.Jura
         label.Text = text
         label.TextColor3 = __RGB(200, 200, 200)
-        label.TextSize = 14
+        label.TextSize = 13
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
@@ -2047,7 +2094,7 @@ local function CreateResetGUIElements()
         toggle.BorderSizePixel = 0
         toggle.Font = Enum.Font.Jura
         toggle.TextColor3 = __RGB(255, 255, 255)
-        toggle.TextSize = 12
+        toggle.TextSize = 11
         toggle.Parent = container
         
         Instance.new("UICorner", toggle).CornerRadius = __UD(0, 5)
@@ -2149,7 +2196,7 @@ local function CreateResetGUIElements()
     end)
     
     -- Кнопка закрытия GUI изнутри
-    AddResetButton("❌ Close Reset GUI", __RGB(100, 0, 0), function()
+    AddResetButton("❌ Close RT GUI", __RGB(100, 0, 0), function()
         ResetGUI.Enabled = false
         ResetState.resetGuiOpen = false
     end)
@@ -2243,11 +2290,11 @@ local function ToggleWallhop()
     print("🧱 Wallhop: " .. (WallhopState.enabled and "ENABLED" or "DISABLED"))
 end
 
--- Кнопка открытия Reset GUI
+-- Кнопка открытия Reset GUI (RT)
 local function ToggleResetGUI()
     ResetState.resetGuiOpen = not ResetState.resetGuiOpen
     ResetGUI.Enabled = ResetState.resetGuiOpen
-    print("🔄 Reset GUI: " .. (ResetState.resetGuiOpen and "OPEN" or "CLOSED"))
+    print("🔄 RT GUI: " .. (ResetState.resetGuiOpen and "OPEN" or "CLOSED"))
 end
 
 -- ==============================================
@@ -2276,9 +2323,9 @@ local function CreateAllButtons()
         BindableButtons.AddBButton("wallhop_toggle", "WH:OFF", ToggleWallhop, false, "wallhop", buttonSize)
     end
     
-    -- Reset GUI Button
+    -- Reset GUI Button (RT - переименовано)
     if not BindableButtons.Buttons["reset_gui_toggle"] then
-        BindableButtons.AddBButton("reset_gui_toggle", "RESET", ToggleResetGUI, false, "reset", buttonSize)
+        BindableButtons.AddBButton("reset_gui_toggle", "RT", ToggleResetGUI, false, "reset", buttonSize)
     end
     
     UpdateAimButtonState()
@@ -2380,9 +2427,9 @@ local function CreateConsoleMenu()
     print("  [T] - Aim Lock    [G] - Wall Check")
     print("  [E] - Outline     [W] - Wallhop")
     print("  [B] - Bomb Jump   [Z] - Gold Bomb")
-    print("  [R] - Open Reset GUI")
+    print("  [R] - Open RT GUI")
     print("=" .. string.rep("=", 45))
-    print("🔄 RESET GUI: Нажмите R или кнопку RESET на экране")
+    print("🔄 RT GUI: Нажмите R или кнопку RT на экране")
     print("💡 Bomb Jump: Нажмите на экран в воздухе с бомбой")
     print("🧱 Wallhop: Прыгайте у стыка стен")
     print("=" .. string.rep("=", 45))
@@ -2461,13 +2508,13 @@ print("  💣 Bomb Jump   - Прыжок с бомбой (кулдаун 22с)")
 if goldBombJump then
     print("  💣 Gold Bomb   - Прыжок с золотой бомбой (кулдаун 4с)")
 end
-print("  🔄 Reset       - Сброс игроков (отдельное GUI)")
+print("  🔄 RT System    - Сброс игроков (отдельное GUI)")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
 print("  [T] - Aim Lock    [G] - Wall Check")
 print("  [E] - Outline     [W] - Wallhop")
 print("  [B] - Bomb Jump   [Z] - Gold Bomb")
-print("  [R] - Open Reset GUI")
+print("  [R] - Open RT GUI")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 CreateConsoleMenu()
 
@@ -2479,7 +2526,7 @@ _G.MM2Outline = ToggleOutline
 _G.MM2Wallhop = ToggleWallhop
 _G.MM2Bomb = ToggleBombJump
 _G.MM2Gold = ToggleGoldBomb
-_G.MM2ResetGUI = ToggleResetGUI
+_G.MM2RT = ToggleResetGUI
 
 print("🔧 Type 'MM2Menu()' to show menu")
 print("🔧 Type 'MM2Aim()' to toggle aim")
@@ -2490,4 +2537,4 @@ print("🔧 Type 'MM2Bomb()' to toggle bomb jump")
 if goldBombJump then
     print("🔧 Type 'MM2Gold()' to toggle gold bomb jump")
 end
-print("🔧 Type 'MM2ResetGUI()' to open/close reset GUI")
+print("🔧 Type 'MM2RT()' to open/close reset GUI")
