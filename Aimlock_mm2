@@ -3,6 +3,8 @@
 -- FIXED: Ускоренное обновление Outline
 -- FIXED: Мгновенное появление Outline при входе игрока
 -- ADDED: Bomb Jump+ система (обычная и золотая бомба)
+-- FIXED: Размер кнопок Bomb Jump = 18
+-- FIXED: Авто-получение бомб включено по умолчанию
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -144,6 +146,18 @@ local __GOLD_WAIT_COLOR = ColorSequence.new({
     ColorSequenceKeypoint.new(1,   __RGB(160, 82, 45))
 })
 
+local __BOMB_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 100, 0)),
+    ColorSequenceKeypoint.new(0.6, __RGB(200, 50, 0)),
+    ColorSequenceKeypoint.new(1,   __RGB(150, 30, 0))
+})
+
+local __GOLD_BOMB_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 215, 0)),
+    ColorSequenceKeypoint.new(0.6, __RGB(255, 140, 0)),
+    ColorSequenceKeypoint.new(1,   __RGB(184, 134, 11))
+})
+
 local muteButtonSounds = false
 
 local function bind_safecallback(callback)
@@ -222,13 +236,13 @@ local function Bind_MakeDraggable(gui, maid, ripple, sound, clickFunc)
     end))
 end
 
-function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType)
+function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType, customSize)
     if BindableButtons.Buttons[id] then return end
     
     local buttonMaid = Maid.new()
     local camera = workspace.CurrentCamera
     local screen = camera.ViewportSize
-    local buttonSizeY = 0.10
+    local buttonSizeY = customSize or 0.10
     local widthScale = buttonSizeY * (screen.Y / screen.X)
     local xPos = 0.06 + ((BindableButtons.Count % 8) * (widthScale + 0.008))
     local yPos = 0.82 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
@@ -255,7 +269,7 @@ function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType)
     TextLabel.Font = Enum.Font.Jura
     TextLabel.Text = text
     TextLabel.TextColor3 = __PCLR(1, 1, 1)
-    TextLabel.TextSize = 8
+    TextLabel.TextSize = math.floor(buttonSizeY * 90)
     TextLabel.TextWrapped = true
     TextLabel.ZIndex = 3
 
@@ -271,6 +285,10 @@ function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType)
         Stroke.Color = __WALL_COLOR
     elseif colorType == "outline" then
         Stroke.Color = __OUTLINE_COLOR
+    elseif colorType == "bomb" then
+        Stroke.Color = __BOMB_COLOR
+    elseif colorType == "goldbomb" then
+        Stroke.Color = __GOLD_BOMB_COLOR
     else
         Stroke.Color = __NORMAL_COLOR
     end
@@ -342,6 +360,10 @@ function BindableButtons.UpdateBButtonColor(id, isActive, colorType)
                 stroke.Color = __WALL_COLOR
             elseif colorType == "outline" then
                 stroke.Color = __OUTLINE_COLOR
+            elseif colorType == "bomb" then
+                stroke.Color = __BOMB_COLOR
+            elseif colorType == "goldbomb" then
+                stroke.Color = __GOLD_BOMB_COLOR
             else
                 stroke.Color = __NORMAL_COLOR
             end
@@ -876,7 +898,7 @@ local function CreateBombJumpSystem(config)
         enabled = false,
         onCooldown = false,
         debounce = false,
-        autoGetBomb = false,
+        autoGetBomb = true, -- ВКЛЮЧЕНО ПО УМОЛЧАНИЮ
         justRespawned = false,
         activeTouches = {},
         bindButton = nil
@@ -1107,14 +1129,21 @@ local function CreateBombJumpSystem(config)
         end)
     end
     
-    -- Создаем кнопку
+    -- Создаем кнопку с размером 18 (0.18)
     if config.createButton then
         local shortName = config.isGold and "GBJ" or "BJ"
-        BindableButtons.AddBButton(config.bindButtonId, shortName, FastBombJump, config.isGold)
+        local buttonSize = 0.18 -- РАЗМЕР 18
+        BindableButtons.AddBButton(config.bindButtonId, shortName, FastBombJump, config.isGold, 
+            config.isGold and "goldbomb" or "bomb", buttonSize)
         state.bindButton = BindableButtons.Buttons[config.bindButtonId]
         if state.bindButton then
             local screen = Workspace.CurrentCamera.ViewportSize
-            state.bindButton.Size = __UD2(0.10 * (screen.Y / screen.X), 0, 0.10, 0)
+            state.bindButton.Size = __UD2(buttonSize * (screen.Y / screen.X), 0, buttonSize, 0)
+            -- Обновляем размер текста
+            local textLabel = state.bindButton:FindFirstChild("@Text")
+            if textLabel then
+                textLabel.TextSize = math.floor(buttonSize * 90)
+            end
         end
     end
     
@@ -1161,6 +1190,7 @@ local function CreateBombJumpSystem(config)
             state.justRespawned = true
             task.wait(1)
             state.justRespawned = false
+            -- Авто-получение бомбы после респавна
             if state.autoGetBomb then
                 task.wait(0.2)
                 pcall(function() 
@@ -1169,6 +1199,16 @@ local function CreateBombJumpSystem(config)
             end
         end)
     )
+    
+    -- Первичное авто-получение бомбы
+    task.spawn(function()
+        task.wait(0.5)
+        if state.autoGetBomb then
+            pcall(function() 
+                ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer(config.bombName) 
+            end)
+        end
+    end)
     
     return {
         GetState = function() return state end,
@@ -1191,7 +1231,7 @@ local function CreateBombJumpSystem(config)
     }
 end
 
--- Создаем системы Bomb Jump
+-- Создаем системы Bomb Jump с размером 18 и авто-получением
 local bombJump = CreateBombJumpSystem({
     bombName = "FakeBomb",
     cooldown = 22,
@@ -1201,6 +1241,9 @@ local bombJump = CreateBombJumpSystem({
     bindButtonId = "bombjump_bind",
     createButton = true
 })
+
+-- Включаем Bomb Jump по умолчанию
+bombJump.SetEnabled(true)
 
 -- Золотая бомба (только для модов)
 local goldBombJump = nil
@@ -1215,6 +1258,8 @@ pcall(function()
             bindButtonId = "goldbombjump_bind",
             createButton = true
         })
+        -- Включаем Gold Bomb Jump по умолчанию
+        goldBombJump.SetEnabled(true)
     end
 end)
 
@@ -1296,7 +1341,7 @@ local function CreateConsoleMenu()
     print("💡 Quick Toggle Aim: Press 'T'")
     print("💡 Quick Toggle WallCheck: Press 'G'")
     print("💡 Quick Toggle Outline: Press 'E'")
-    print("💣 Bomb Jump: Tap screen in air with bomb")
+    print("💣 Bomb Jump: Tap screen in air with bomb (AUTO-GET ENABLED)")
     print("🔄 Outline обновляется каждые 0.05 сек")
     print("⚡ Outline появляется МГНОВЕННО при входе игрока")
 end
@@ -1509,10 +1554,10 @@ print("  🔵 Aim:ON/OFF  -  Вкл/Выкл автонаведение")
 print("  🔵 Wall:ON/OFF -  Вкл/Выкл проверку видимости")
 print("  🔴 OL:ON/OFF   -  Вкл/Выкл Outline подсветку")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("💣 BOMB JUMP+ КНОПКИ:")
-print("  🟡 BJ - Обычная бомба (кулдаун 22с)")
+print("💣 BOMB JUMP+ КНОПКИ (РАЗМЕР 18):")
+print("  🟡 BJ - Обычная бомба (кулдаун 22с) [АВТО-ПОЛУЧЕНИЕ ВКЛ]")
 if goldBombJump then
-    print("  🟡 GBJ - Золотая бомба (кулдаун 4с)")
+    print("  🟡 GBJ - Золотая бомба (кулдаун 4с) [АВТО-ПОЛУЧЕНИЕ ВКЛ]")
 end
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("🎨 ЦВЕТА OUTLINE:")
@@ -1534,6 +1579,7 @@ if goldBombJump then
 end
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("💡 Bomb Jump: Нажмите на экран в воздухе с бомбой в руках")
+print("💡 Auto-Get: Бомба автоматически выдаётся при старте и респавне")
 CreateConsoleMenu()
 
 _G.MM2AimMenu = CreateConsoleMenu
