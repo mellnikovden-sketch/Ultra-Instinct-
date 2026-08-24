@@ -1,5 +1,7 @@
 -- MM2 Murderer Aim Lock V2.6 + OUTLINE (Sheriff/Murderer/Innocent)
 -- FIXED: Автообновление после раунда
+-- FIXED: Ускоренное обновление Outline
+-- FIXED: Мгновенное появление Outline при входе игрока
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -530,11 +532,11 @@ function FindMurderer(preferTarget)
 end
 
 -- ==============================================
--- OUTLINE СИСТЕМА С АВТООБНОВЛЕНИЕМ
+-- OUTLINE СИСТЕМА С БЫСТРЫМ ОБНОВЛЕНИЕМ
 -- ==============================================
 local OutlinedPlayers = {}
 local OutlineMaid = Maid.new()
-local OutlineUpdateRate = 0.15
+local OutlineUpdateRate = 0.05 -- Ускорено с 0.15 до 0.05
 local LastOutlineUpdate = 0
 
 -- Отслеживание подключений к CharacterAdded для каждого игрока
@@ -724,7 +726,7 @@ local function OutlineUpdateLoop()
     UpdateOutline()
 end
 
--- Обработка добавления нового игрока
+-- Обработка добавления нового игрока (МГНОВЕННО)
 local function SetupPlayer(plr)
     if plr == LocalPlayer then return end
     
@@ -734,38 +736,84 @@ local function SetupPlayer(plr)
         PlayerConnections[plr] = nil
     end
     
-    -- Подписываемся на CharacterAdded (новый раунд/респавн)
-    local conn = plr.CharacterAdded:Connect(function()
-        -- Ждём появления персонажа
-        task.wait(0.5)
+    -- ПЕРВИЧНОЕ ПРИМЕНЕНИЕ Outline СРАЗУ после добавления игрока
+    if OutlineEnabled then
+        -- Ждём немного для загрузки персонажа (но недолго)
+        task.wait(0.05)
         
-        if OutlineEnabled then
-            -- Удаляем старый Outline
-            RemoveOutline(plr)
-            -- Создаём новый
+        -- Проверяем, есть ли уже персонаж
+        if plr.Character then
             local role = GetPlayerRole(plr)
             if role and role ~= "Dead" and role ~= "Unknown" then
                 if IsPlayerInGame(plr) then
                     ApplyOutline(plr)
+                    print("🎯 Outline применён для нового игрока: " .. plr.Name)
                 end
             end
         end
-    end)
-    
-    PlayerConnections[plr] = conn
-    OutlineMaid:GiveTask(conn)
+        
+        -- Подписываемся на CharacterAdded для будущих появлений
+        local conn = plr.CharacterAdded:Connect(function()
+            -- Мгновенное применение Outline при появлении персонажа
+            task.wait(0.05) -- Минимальная задержка
+            
+            if OutlineEnabled then
+                -- Удаляем старый Outline
+                RemoveOutline(plr)
+                -- Создаём новый
+                local role = GetPlayerRole(plr)
+                if role and role ~= "Dead" and role ~= "Unknown" then
+                    if IsPlayerInGame(plr) then
+                        ApplyOutline(plr)
+                        print("🔄 Outline обновлён для игрока: " .. plr.Name)
+                    end
+                end
+            end
+        end)
+        
+        PlayerConnections[plr] = conn
+        OutlineMaid:GiveTask(conn)
+    else
+        -- Если Outline выключен, просто подписываемся на CharacterAdded
+        local conn = plr.CharacterAdded:Connect(function()
+            if OutlineEnabled then
+                task.wait(0.05)
+                RemoveOutline(plr)
+                local role = GetPlayerRole(plr)
+                if role and role ~= "Dead" and role ~= "Unknown" then
+                    if IsPlayerInGame(plr) then
+                        ApplyOutline(plr)
+                    end
+                end
+            end
+        end)
+        
+        PlayerConnections[plr] = conn
+        OutlineMaid:GiveTask(conn)
+    end
 end
 
--- Обработка существующих игроков
+-- Обработка существующих игроков (при загрузке скрипта)
 for _, plr in ipairs(Players:GetPlayers()) do
     if plr ~= LocalPlayer then
         SetupPlayer(plr)
     end
 end
 
--- Обработка новых игроков
+-- Обработка НОВЫХ игроков (мгновенное применение)
 Players.PlayerAdded:Connect(function(plr)
+    -- Мгновенно обрабатываем нового игрока
     SetupPlayer(plr)
+    
+    -- Дополнительная проверка через 0.1 сек (на случай если персонаж ещё не загружен)
+    task.wait(0.1)
+    if OutlineEnabled and plr.Character and not OutlinedPlayers[plr] then
+        local role = GetPlayerRole(plr)
+        if role and role ~= "Dead" and role ~= "Unknown" and IsPlayerInGame(plr) then
+            ApplyOutline(plr)
+            print("🔁 Outline применён для нового игрока (повторно): " .. plr.Name)
+        end
+    end
 end)
 
 -- Обработка удаления игроков
@@ -777,10 +825,10 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
--- Обработка смены карты/раунда (через изменение игроков)
+-- Обработка смены карты/раунда
 local function OnRoundChange()
-    -- Небольшая задержка после смены раунда
-    task.wait(1)
+    -- Минимальная задержка после смены раунда
+    task.wait(0.2)
     
     if OutlineEnabled then
         print("🔄 Обновление Outline после раунда...")
@@ -788,10 +836,10 @@ local function OnRoundChange()
     end
 end
 
--- Отслеживаем смену раунда через изменение количества игроков в игре
+-- Отслеживаем смену раунда
 local LastPlayerCount = #Players:GetPlayers()
 Players.PlayerAdded:Connect(function()
-    task.wait(0.5)
+    task.wait(0.1)
     if #Players:GetPlayers() ~= LastPlayerCount then
         LastPlayerCount = #Players:GetPlayers()
         OnRoundChange()
@@ -799,7 +847,7 @@ Players.PlayerAdded:Connect(function()
 end)
 
 Players.PlayerRemoving:Connect(function()
-    task.wait(0.5)
+    task.wait(0.1)
     if #Players:GetPlayers() ~= LastPlayerCount then
         LastPlayerCount = #Players:GetPlayers()
         OnRoundChange()
@@ -882,7 +930,8 @@ local function CreateConsoleMenu()
     print("💡 Quick Toggle Aim: Press 'T'")
     print("💡 Quick Toggle WallCheck: Press 'G'")
     print("💡 Quick Toggle Outline: Press 'E'")
-    print("🔄 Outline автоматически обновляется после каждого раунда")
+    print("🔄 Outline обновляется каждые 0.05 сек")
+    print("⚡ Outline появляется МГНОВЕННО при входе игрока")
 end
 
 -- ==============================================
@@ -1072,10 +1121,10 @@ print("  🔴 Красный  - Murderer (убийца)")
 print("  🔵 Синий    - Sheriff (шериф)")
 print("  🟢 Зелёный  - Innocent (невиновный)")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🔄 Outline ОБНОВЛЯЕТСЯ АВТОМАТИЧЕСКИ:")
-print("  ✅ После каждого раунда")
-print("  ✅ При респавне игроков")
-print("  ✅ При смене персонажа")
+print("🚀 УЛУЧШЕННОЕ ОБНОВЛЕНИЕ OUTLINE:")
+print("  ⚡ Частота обновления: каждые 0.05 сек")
+print("  ⚡ Мгновенное появление при входе игрока")
+print("  ⚡ Авто-обновление после каждого раунда")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
 print("  [T] - Toggle Aim Lock")
