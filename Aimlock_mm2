@@ -1,10 +1,11 @@
--- MM2 Murderer Aim Lock V2.6 + OUTLINE + BOMB JUMP+
+-- MM2 Murderer Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP
 -- FIXED: Автообновление после раунда
 -- FIXED: Ускоренное обновление Outline
 -- FIXED: Мгновенное появление Outline при входе игрока
 -- ADDED: Bomb Jump+ система (обычная и золотая бомба)
 -- FIXED: Размер кнопок Bomb Jump = 18
 -- FIXED: Авто-получение бомб включено по умолчанию
+-- ADDED: WallHop система (флинг при прыжке возле стыка стен)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -15,6 +16,282 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
+
+-- ==============================================
+-- WALLHOP ПЛАГИН
+-- ==============================================
+local WallHop = {
+    enabled = false,
+    detectionDistance = 3,
+    flickPower = 50,
+    isFlicking = false,
+    lastFlickTime = 0,
+    isJumpKeyPressed = false,
+    lastHitInstance = nil,
+    currentHitInstance = nil,
+    wallDetectionCooldown = 0,
+    bindButton = nil
+}
+
+-- Raycast параметры для WallHop
+local wallRaycastParams = RaycastParams.new()
+wallRaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+-- --- Функция проверки, является ли объект игроком ---
+local function isPlayerCharacter(instance)
+    if not instance then return false end
+    local current = instance
+    while current do
+        if current:IsA("Model") and current:FindFirstChildOfClass("Humanoid") then
+            local players = Players:GetPlayers()
+            for _, player in ipairs(players) do
+                if player.Character == current then
+                    return true
+                end
+            end
+        end
+        current = current.Parent
+    end
+    return false
+end
+
+-- --- Функция проверки, является ли объект стеной ---
+local function isWall(instance)
+    if not instance or not instance.IsA then return false end
+    
+    -- Игнорируем игроков
+    if instance:IsA("Part") and instance.Parent and instance.Parent:IsA("Model") and instance.Parent:FindFirstChild("Humanoid") then
+        return false
+    end
+    
+    -- Проверяем все родительские объекты на принадлежность игроку
+    local current = instance
+    while current do
+        if isPlayerCharacter(current) then
+            return false
+        end
+        current = current.Parent
+    end
+    
+    -- Проверяем, что это часть с коллизией
+    if not instance:IsA("BasePart") and not instance:IsA("Terrain") then
+        return false
+    end
+    
+    -- Проверяем CanCollide
+    if instance:IsA("BasePart") and not instance.CanCollide then
+        return false
+    end
+    
+    return true
+end
+
+-- --- Функция получения результата Raycast для стены ---
+local function getWallRaycastResult()
+    local character = LocalPlayer.Character
+    if not character then return nil end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    
+    -- Добавляем в черный список персонажи других игроков
+    local players = Players:GetPlayers()
+    local blacklist = {character}
+    for _, player in ipairs(players) do
+        if player ~= LocalPlayer and player.Character then
+            table.insert(blacklist, player.Character)
+        end
+    end
+    wallRaycastParams.FilterDescendantsInstances = blacklist
+    
+    local closestHit, minDistance = nil, WallHop.detectionDistance
+    local hrpCF = hrp.CFrame
+    for i = 0,7 do
+        local angle = math.rad(i*45)
+        local dir = (hrpCF * CFrame.Angles(0, angle, 0)).LookVector
+        local ray = workspace:Raycast(hrp.Position, dir * WallHop.detectionDistance, wallRaycastParams)
+        if ray and ray.Instance and ray.Distance < minDistance then
+            local hitInstance = ray.Instance
+            if isWall(hitInstance) then
+                minDistance = ray.Distance
+                closestHit = ray
+            end
+        end
+    end
+    return closestHit
+end
+
+-- --- Флинг (Видео флинг) ---
+local function performVideoFlick()
+    if not WallHop.enabled then return end
+    if WallHop.isFlicking then return end
+    WallHop.isFlicking = true
+    
+    local char = LocalPlayer.Character
+    if not char then WallHop.isFlicking = false return end
+    
+    local hum = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then WallHop.isFlicking = false return end
+    
+    -- Проверяем, жив ли игрок
+    if hum.Health <= 0 then WallHop.isFlicking = false return end
+    
+    -- Сохраняем текущее состояние
+    local currentVel = hrp.Velocity
+    
+    -- Выполняем флинг
+    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    hrp.Velocity = Vector3.new(currentVel.X, WallHop.flickPower, currentVel.Z)
+    
+    -- Разворот камеры
+    local Camera = workspace.CurrentCamera
+    local startCFrame = Camera.CFrame
+    Camera.CFrame = startCFrame * CFrame.Angles(0, math.rad(180), 0)
+    
+    task.wait(0.01)
+    Camera.CFrame = startCFrame
+    
+    WallHop.isFlicking = false
+end
+
+-- --- Wallhop (Новая версия) ---
+local function performWallhop()
+    if not WallHop.enabled then return end
+    
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not (humanoid and rootPart and humanoid:GetState() ~= Enum.HumanoidStateType.Dead) then return end
+    
+    local wall = getWallRaycastResult()
+    if not wall then return end
+
+    -- Поворачиваем игрока к стене
+    rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + wall.Normal)
+    RunService.Heartbeat:Wait()
+    
+    if humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        task.wait(0.1)
+    end
+end
+
+-- --- Обнаружение стыков стен (Видео флинг) ---
+local function wallHopHeartbeat()
+    if not WallHop.enabled or WallHop.isFlicking then return end
+    
+    local char = LocalPlayer.Character
+    if not char then 
+        WallHop.lastHitInstance = nil
+        return 
+    end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    if not hrp or not hum or hum.Health <= 0 then 
+        WallHop.lastHitInstance = nil
+        return 
+    end
+    
+    -- Проверяем, зажат ли пробел
+    if not WallHop.isJumpKeyPressed then 
+        WallHop.lastHitInstance = nil
+        return 
+    end
+    
+    -- Создаем Raycast с улучшенной фильтрацией
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {char}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.IgnoreWater = true
+    
+    -- Пускаем луч в направлении камеры
+    local Camera = workspace.CurrentCamera
+    local direction = Camera.CFrame.LookVector * WallHop.detectionDistance
+    local result = workspace:Raycast(hrp.Position, direction, raycastParams)
+    
+    WallHop.currentHitInstance = nil
+    
+    if result then
+        local hitInstance = result.Instance
+        
+        -- Проверяем, является ли объект стеной
+        if isWall(hitInstance) then
+            WallHop.currentHitInstance = hitInstance
+            
+            -- Проверяем смену стены (стык)
+            if WallHop.lastHitInstance and WallHop.lastHitInstance ~= WallHop.currentHitInstance then
+                local currentTime = os.clock()
+                if currentTime - WallHop.lastFlickTime > 0.1 then
+                    WallHop.lastFlickTime = currentTime
+                    performVideoFlick()
+                end
+            end
+        end
+    end
+    
+    WallHop.lastHitInstance = WallHop.currentHitInstance
+end
+
+-- --- Функции управления WallHop ---
+function ToggleWallHop()
+    WallHop.enabled = not WallHop.enabled
+    if WallHop.bindButton then
+        BindableButtons.UpdateBButtonText("wallhop_toggle", WallHop.enabled and "WH:ON" or "WH:OFF", false, false)
+        BindableButtons.UpdateBButtonColor("wallhop_toggle", WallHop.enabled, "wallhop")
+    end
+    print("🧱 WallHop: " .. (WallHop.enabled and "ENABLED" or "DISABLED"))
+end
+
+function SetWallHopDetection(dist)
+    WallHop.detectionDistance = dist
+end
+
+function SetWallHopPower(power)
+    WallHop.flickPower = power
+end
+
+-- --- Настройка WallHop ---
+local function SetupWallHop()
+    -- Подключение к Heartbeat
+    RunService.Heartbeat:Connect(wallHopHeartbeat)
+    
+    -- Автоматический Wallhop при прыжке
+    UserInputService.JumpRequest:Connect(function()
+        if WallHop.enabled then
+            performWallhop()
+        end
+    end)
+    
+    -- Отслеживание нажатия на прыжок
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.Space then
+            WallHop.isJumpKeyPressed = true
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.Space then
+            WallHop.isJumpKeyPressed = false
+            WallHop.lastHitInstance = nil
+        end
+    end)
+    
+    -- Сброс состояния при респавне
+    LocalPlayer.CharacterAdded:Connect(function()
+        WallHop.lastHitInstance = nil
+        WallHop.currentHitInstance = nil
+        WallHop.isFlicking = false
+    end)
+    
+    -- Сброс при потере фокуса
+    UserInputService.WindowFocused:Connect(function()
+        WallHop.isJumpKeyPressed = false
+        WallHop.lastHitInstance = nil
+    end)
+end
 
 -- ==============================================
 -- СОЗДАНИЕ ГЛАВНОГО GUI
@@ -132,6 +409,12 @@ local __OUTLINE_COLOR = ColorSequence.new({
     ColorSequenceKeypoint.new(0,   __PCLR(1.0, 0.0, 0.0)),
     ColorSequenceKeypoint.new(0.6, __PCLR(0.8, 0.0, 0.2)),
     ColorSequenceKeypoint.new(1,   __PCLR(0.6, 0.0, 0.3))
+})
+
+local __WALLHOP_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 0, 255)),
+    ColorSequenceKeypoint.new(0.6, __RGB(200, 0, 200)),
+    ColorSequenceKeypoint.new(1,   __RGB(150, 0, 150))
 })
 
 local __GOLD_NORMAL_COLOR = ColorSequence.new({
@@ -289,6 +572,8 @@ function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType, cust
         Stroke.Color = __BOMB_COLOR
     elseif colorType == "goldbomb" then
         Stroke.Color = __GOLD_BOMB_COLOR
+    elseif colorType == "wallhop" then
+        Stroke.Color = __WALLHOP_COLOR
     else
         Stroke.Color = __NORMAL_COLOR
     end
@@ -364,6 +649,8 @@ function BindableButtons.UpdateBButtonColor(id, isActive, colorType)
                 stroke.Color = __BOMB_COLOR
             elseif colorType == "goldbomb" then
                 stroke.Color = __GOLD_BOMB_COLOR
+            elseif colorType == "wallhop" then
+                stroke.Color = __WALLHOP_COLOR
             else
                 stroke.Color = __NORMAL_COLOR
             end
@@ -1326,7 +1613,7 @@ end
 -- ==============================================
 local function CreateConsoleMenu()
     print("=" .. string.rep("=", 40))
-    print("  🎯 MM2 AIMLOCK V2.6 | OUTLINE | BOMB JUMP+")
+    print("  🎯 MM2 AIMLOCK V2.6 | OUTLINE | BOMB JUMP+ | WALLHOP")
     print("=" .. string.rep("=", 40))
     print("  [1] Toggle Aim Lock    [Currently: " .. (AimLockEnabled and "ON" or "OFF") .. "]")
     print("  [2] Toggle Wall Check  [Currently: " .. (WallCheckEnabled and "ON" or "OFF") .. "]")
@@ -1335,15 +1622,18 @@ local function CreateConsoleMenu()
     print("  [5] Prediction Level   [Currently: " .. PredictionLevel .. "]")
     print("  [6] Toggle Bomb Jump   [Currently: " .. (bombJump.GetState().enabled and "ON" or "OFF") .. "]")
     print("  [7] Toggle Gold Bomb   [Currently: " .. (goldBombJump and goldBombJump.GetState().enabled and "ON" or "OFF") .. "]")
-    print("  [8] Print Status")
-    print("  [9] Exit Menu")
+    print("  [8] Toggle WallHop     [Currently: " .. (WallHop.enabled and "ON" or "OFF") .. "]")
+    print("  [9] Print Status")
+    print("  [0] Exit Menu")
     print("=" .. string.rep("=", 40))
     print("💡 Quick Toggle Aim: Press 'T'")
     print("💡 Quick Toggle WallCheck: Press 'G'")
     print("💡 Quick Toggle Outline: Press 'E'")
+    print("💡 Quick Toggle WallHop: Press 'H'")
     print("💣 Bomb Jump: Tap screen in air with bomb (AUTO-GET ENABLED)")
     print("🔄 Outline обновляется каждые 0.05 сек")
     print("⚡ Outline появляется МГНОВЕННО при входе игрока")
+    print("🧱 WallHop: Флинг при прыжке возле стыка стен")
 end
 
 -- ==============================================
@@ -1400,6 +1690,13 @@ local function ToggleOutline()
     print("👁️ Outline: " .. (OutlineEnabled and "ENABLED" or "DISABLED"))
 end
 
+local function UpdateWallHopButtonState()
+    local btn = BindableButtons.Buttons["wallhop_toggle"]
+    if not btn then return end
+    BindableButtons.UpdateBButtonText("wallhop_toggle", WallHop.enabled and "WH:ON" or "WH:OFF", false, false)
+    BindableButtons.UpdateBButtonColor("wallhop_toggle", WallHop.enabled, "wallhop")
+end
+
 local function ToggleBombJump()
     local state = bombJump.GetState()
     bombJump.SetEnabled(not state.enabled)
@@ -1453,21 +1750,35 @@ local function CreateButtons()
         end
     end
     
+    if not BindableButtons.Buttons["wallhop_toggle"] then
+        BindableButtons.AddBButton("wallhop_toggle", "WH:OFF", function()
+            ToggleWallHop()
+        end, false, "wallhop")
+        
+        local btn = BindableButtons.Buttons["wallhop_toggle"]
+        if btn then
+            local screen = Workspace.CurrentCamera.ViewportSize
+            btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
+        end
+    end
+    
     UpdateAimButtonState()
     UpdateWallButtonState()
     UpdateOutlineButtonState()
+    UpdateWallHopButtonState()
 end
 
 local function DeleteButtons()
     BindableButtons.DeleteBButton("aim_toggle")
     BindableButtons.DeleteBButton("wall_toggle")
     BindableButtons.DeleteBButton("outline_toggle")
+    BindableButtons.DeleteBButton("wallhop_toggle")
     BindableButtons.DeleteBButton("bombjump_bind")
     BindableButtons.DeleteBButton("goldbombjump_bind")
 end
 
 local function ToggleButtonsVisibility()
-    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle", "bombjump_bind", "goldbombjump_bind"}) do
+    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle", "wallhop_toggle", "bombjump_bind", "goldbombjump_bind"}) do
         local btn = BindableButtons.Buttons[id]
         if btn then
             btn.Visible = ShowBindableButton
@@ -1501,6 +1812,10 @@ local function SetupKeybinds()
         if input.KeyCode == Enum.KeyCode.Z then
             ToggleGoldBomb()
         end
+        
+        if input.KeyCode == Enum.KeyCode.H then
+            ToggleWallHop()
+        end
     end)
     
     RootMaid:GiveTask(inputBeganConnection)
@@ -1512,6 +1827,9 @@ end
 CreateButtons()
 ToggleButtonsVisibility()
 SetupKeybinds()
+
+-- Запускаем WallHop
+SetupWallHop()
 
 -- ==============================================
 -- ПРИВЯЗКА AIMLOCK К RENDERSTEP
@@ -1547,12 +1865,13 @@ end)
 -- ==============================================
 -- ВЫВОД МЕНЮ
 -- ==============================================
-print("✅ MM2 Aim Lock V2.6 + OUTLINE + BOMB JUMP+ Loaded!")
+print("✅ MM2 Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP Loaded!")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🎯 ТРИ КНОПКИ НА ЭКРАНЕ:")
+print("🎯 ЧЕТЫРЕ КНОПКИ НА ЭКРАНЕ:")
 print("  🔵 Aim:ON/OFF  -  Вкл/Выкл автонаведение")
 print("  🔵 Wall:ON/OFF -  Вкл/Выкл проверку видимости")
 print("  🔴 OL:ON/OFF   -  Вкл/Выкл Outline подсветку")
+print("  🟣 WH:ON/OFF   -  Вкл/Выкл WallHop (флинг у стен)")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("💣 BOMB JUMP+ КНОПКИ (РАЗМЕР 18):")
 print("  🟡 BJ - Обычная бомба (кулдаун 22с) [АВТО-ПОЛУЧЕНИЕ ВКЛ]")
@@ -1573,6 +1892,7 @@ print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
 print("  [T] - Toggle Aim Lock")
 print("  [G] - Toggle Wall Check")
 print("  [E] - Toggle Outline")
+print("  [H] - Toggle WallHop")
 print("  [B] - Toggle Bomb Jump")
 if goldBombJump then
     print("  [Z] - Toggle Gold Bomb Jump")
@@ -1580,6 +1900,7 @@ end
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("💡 Bomb Jump: Нажмите на экран в воздухе с бомбой в руках")
 print("💡 Auto-Get: Бомба автоматически выдаётся при старте и респавне")
+print("🧱 WallHop: Зажмите пробел у стены для флинга при смене стыка")
 CreateConsoleMenu()
 
 _G.MM2AimMenu = CreateConsoleMenu
@@ -1588,6 +1909,7 @@ _G.MM2Wall = ToggleWallCheck
 _G.MM2Outline = ToggleOutline
 _G.MM2BombJump = ToggleBombJump
 _G.MM2GoldBomb = ToggleGoldBomb
+_G.MM2WallHop = ToggleWallHop
 
 print("🔧 Type 'MM2AimMenu()' to show menu")
 print("🔧 Type 'MM2Toggle()' to toggle aim")
@@ -1597,3 +1919,4 @@ print("🔧 Type 'MM2BombJump()' to toggle bomb jump")
 if goldBombJump then
     print("🔧 Type 'MM2GoldBomb()' to toggle gold bomb jump")
 end
+print("🔧 Type 'MM2WallHop()' to toggle wallhop")
