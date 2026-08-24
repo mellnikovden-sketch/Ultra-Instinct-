@@ -1,11 +1,11 @@
 --[[
     ═══════════════════════════════════════════════════════════
-    🔥 OMEGA ULTIMATE v5.3 - СТАБИЛЬНАЯ МОБИЛЬНАЯ ВЕРСИЯ 🔥
+    🔥 OMEGA ULTIMATE v5.3 - МОНОХРОМНАЯ ВЕРСИЯ 🔥
     ═══════════════════════════════════════════════════════════
     ИСПРАВЛЕНО:
-    • Кнопка открытия больше не пропадает
-    • Перетаскивание работает корректно
-    • Все события исправлены
+    • GUI не закрывается при нажатии на него
+    • Монохромный стиль (черно-бело-серый)
+    • Кнопка всегда видима
     • Полная стабильность
     ═══════════════════════════════════════════════════════════
 ]]
@@ -26,17 +26,18 @@ _G.Menu = {
 }
 
 -- ═══════════════════════════════════════════════════════════
--- ЦВЕТА
+-- МОНОХРОМНЫЕ ЦВЕТА
 -- ═══════════════════════════════════════════════════════════
 
 local COLORS = {
-    bg = Color3.fromRGB(15, 12, 25),
-    bgSecondary = Color3.fromRGB(25, 20, 40),
-    bgHover = Color3.fromRGB(40, 30, 60),
-    border = Color3.fromRGB(100, 80, 200),
-    accent = Color3.fromRGB(150, 110, 255),
-    text = Color3.fromRGB(200, 190, 220),
-    textDim = Color3.fromRGB(150, 140, 170),
+    bg = Color3.fromRGB(0, 0, 0),
+    bgSecondary = Color3.fromRGB(20, 20, 20),
+    bgHover = Color3.fromRGB(40, 40, 40),
+    border = Color3.fromRGB(255, 255, 255),
+    accent = Color3.fromRGB(255, 255, 255),
+    text = Color3.fromRGB(200, 200, 200),
+    textDim = Color3.fromRGB(150, 150, 150),
+    textBright = Color3.fromRGB(255, 255, 255),
 }
 
 -- ═══════════════════════════════════════════════════════════
@@ -50,16 +51,16 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ═══════════════════════════════════════════════════════════
--- КНОПКА ОТКРЫТИЯ (ВСЕГДА ВИДИМА)
+-- КНОПКА ОТКРЫТИЯ (МОНОХРОМ)
 -- ═══════════════════════════════════════════════════════════
 
 local OpenButton = Instance.new("ImageButton")
 OpenButton.Size = UDim2.new(0, 55, 0, 55)
 OpenButton.Position = UDim2.new(0.02, 0, 0.86, 0)
 OpenButton.BackgroundColor3 = COLORS.bgSecondary
-OpenButton.BackgroundTransparency = 0.15
+OpenButton.BackgroundTransparency = 0
 OpenButton.Image = "rbxassetid://6031091071"
-OpenButton.ImageColor3 = COLORS.accent
+OpenButton.ImageColor3 = COLORS.textBright
 OpenButton.ScaleType = Enum.ScaleType.Fit
 OpenButton.Parent = ScreenGui
 
@@ -69,28 +70,28 @@ OpenCorner.Parent = OpenButton
 
 local OpenStroke = Instance.new("UIStroke")
 OpenStroke.Color = COLORS.border
-OpenStroke.Thickness = 1.5
-OpenStroke.Transparency = 0.3
+OpenStroke.Thickness = 2
+OpenStroke.Transparency = 0.2
 OpenStroke.Parent = OpenButton
 
 local OpenLabel = Instance.new("TextLabel")
 OpenLabel.Size = UDim2.new(1, 0, 1, 0)
 OpenLabel.BackgroundTransparency = 1
 OpenLabel.Text = "⚡"
-OpenLabel.TextColor3 = COLORS.accent
+OpenLabel.TextColor3 = COLORS.textBright
 OpenLabel.TextSize = 26
 OpenLabel.Font = Enum.Font.Jura
 OpenLabel.Parent = OpenButton
 
 -- ═══════════════════════════════════════════════════════════
--- ГЛАВНОЕ МЕНЮ
+-- ГЛАВНОЕ МЕНЮ (МОНОХРОМ)
 -- ═══════════════════════════════════════════════════════════
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 350, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 360, 0, 460)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -230)
 MainFrame.BackgroundColor3 = COLORS.bg
-MainFrame.BackgroundTransparency = 0.08
+MainFrame.BackgroundTransparency = 0
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Visible = false
@@ -103,19 +104,9 @@ Corner.Parent = MainFrame
 
 local Stroke = Instance.new("UIStroke")
 Stroke.Color = COLORS.border
-Stroke.Thickness = 2
-Stroke.Transparency = 0.3
+Stroke.Thickness = 1.5
+Stroke.Transparency = 0.15
 Stroke.Parent = MainFrame
-
-local StrokeGradient = Instance.new("UIGradient")
-StrokeGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, COLORS.border),
-    ColorSequenceKeypoint.new(0.3, COLORS.accent),
-    ColorSequenceKeypoint.new(0.6, COLORS.border),
-    ColorSequenceKeypoint.new(0.8, Color3.fromRGB(80, 60, 160)),
-    ColorSequenceKeypoint.new(1, COLORS.border)
-})
-StrokeGradient.Parent = Stroke
 
 -- ═══════════════════════════════════════════════════════════
 -- ЗАГОЛОВОК
@@ -124,7 +115,7 @@ StrokeGradient.Parent = Stroke
 local TitleFrame = Instance.new("Frame")
 TitleFrame.Size = UDim2.new(1, 0, 0, 45)
 TitleFrame.BackgroundColor3 = COLORS.bgSecondary
-TitleFrame.BackgroundTransparency = 0.3
+TitleFrame.BackgroundTransparency = 0
 TitleFrame.BorderSizePixel = 0
 TitleFrame.Parent = MainFrame
 
@@ -137,7 +128,7 @@ TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
 TitleLabel.Position = UDim2.new(0.05, 0, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "⚡ OMEGA"
-TitleLabel.TextColor3 = COLORS.accent
+TitleLabel.TextColor3 = COLORS.textBright
 TitleLabel.TextSize = 18
 TitleLabel.Font = Enum.Font.Jura
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -164,7 +155,7 @@ CategoryContainer.BackgroundTransparency = 1
 CategoryContainer.BorderSizePixel = 0
 CategoryContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 CategoryContainer.ScrollBarThickness = 2
-CategoryContainer.ScrollBarImageColor3 = COLORS.border
+CategoryContainer.ScrollBarImageColor3 = COLORS.textDim
 CategoryContainer.Parent = MainFrame
 
 local FunctionContainer = Instance.new("ScrollingFrame")
@@ -174,7 +165,7 @@ FunctionContainer.BackgroundTransparency = 1
 FunctionContainer.BorderSizePixel = 0
 FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 FunctionContainer.ScrollBarThickness = 3
-FunctionContainer.ScrollBarImageColor3 = COLORS.border
+FunctionContainer.ScrollBarImageColor3 = COLORS.textDim
 FunctionContainer.Parent = MainFrame
 
 -- ═══════════════════════════════════════════════════════════
@@ -227,10 +218,6 @@ local function CreateCategoryButton(name, parent)
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = parent
     
-    local hoverCorner = Instance.new("UICorner")
-    hoverCorner.CornerRadius = UDim.new(0, 6)
-    hoverCorner.Parent = btn
-    
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, 0, 1, 0)
     container.BackgroundTransparency = 1
@@ -248,7 +235,7 @@ local function CreateCategoryButton(name, parent)
         end
         btn.BackgroundTransparency = 0.9
         btn.BackgroundColor3 = COLORS.bgHover
-        btn.TextColor3 = COLORS.accent
+        btn.TextColor3 = COLORS.textBright
         
         for _, child in ipairs(FunctionContainer:GetChildren()) do
             if child:IsA("Frame") and child ~= container then
@@ -319,7 +306,7 @@ function _G.Menu:AddSeparator(category)
     sep.Size = UDim2.new(1, -10, 0, 1)
     sep.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
     sep.BackgroundColor3 = COLORS.border
-    sep.BackgroundTransparency = 0.5
+    sep.BackgroundTransparency = 0.3
     sep.Parent = parent
     UpdateContainerSize(parent)
     return sep
@@ -366,9 +353,9 @@ function _G.Menu:AddToggle(text, callback, category)
     toggle.Activated:Connect(function()
         state = not state
         if state then
-            toggle.BackgroundColor3 = COLORS.accent
+            toggle.BackgroundColor3 = COLORS.textBright
             toggle.Text = "ON"
-            toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+            toggle.TextColor3 = COLORS.bg
         else
             toggle.BackgroundColor3 = COLORS.bgSecondary
             toggle.Text = "OFF"
@@ -391,7 +378,7 @@ function _G.Menu:AddButton(text, callback, category)
     btn.Size = UDim2.new(1, -10, 0, 35)
     btn.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
     btn.BackgroundColor3 = COLORS.bgSecondary
-    btn.BackgroundTransparency = 0.5
+    btn.BackgroundTransparency = 0
     btn.Text = text
     btn.TextColor3 = COLORS.text
     btn.TextSize = 12
@@ -444,7 +431,7 @@ function _G.Menu:AddSlider(text, min, max, default, callback, category)
     
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = COLORS.accent
+    fill.BackgroundColor3 = COLORS.textBright
     fill.Parent = sliderFrame
     
     local fillCorner = Instance.new("UICorner")
@@ -515,7 +502,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     dropdown.Size = UDim2.new(0.55, 0, 1, 0)
     dropdown.Position = UDim2.new(0.45, 0, 0, 0)
     dropdown.BackgroundColor3 = COLORS.bgSecondary
-    dropdown.BackgroundTransparency = 0.5
+    dropdown.BackgroundTransparency = 0
     dropdown.Text = options[1] or "Select"
     dropdown.TextColor3 = COLORS.text
     dropdown.TextSize = 11
@@ -540,7 +527,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
         dropList.Size = UDim2.new(0.55, 0, 0, #options * 25)
         dropList.Position = UDim2.new(0.45, 0, 1, 2)
         dropList.BackgroundColor3 = COLORS.bgSecondary
-        dropList.BackgroundTransparency = 0.1
+        dropList.BackgroundTransparency = 0
         dropList.ClipsDescendants = true
         dropList.Parent = container
         
@@ -575,44 +562,24 @@ function _G.Menu:AddDropdown(text, options, callback, category)
 end
 
 -- ═══════════════════════════════════════════════════════════
--- ОТКРЫТИЕ/ЗАКРЫТИЕ
+-- ОТКРЫТИЕ/ЗАКРЫТИЕ (ФИКС)
 -- ═══════════════════════════════════════════════════════════
 
 local function ToggleMenu()
     _G.Menu.IsOpen = not _G.Menu.IsOpen
     MainFrame.Visible = _G.Menu.IsOpen
-    OpenButton.Visible = true -- Кнопка всегда видима!
+    OpenButton.Visible = true -- Всегда видима
 end
 
 OpenButton.Activated:Connect(ToggleMenu)
 CloseBtn.Activated:Connect(ToggleMenu)
 
--- Закрытие при нажатии вне меню
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.Touch then
-        if MainFrame.Visible then
-            local pos = input.Position
-            local absPos = MainFrame.AbsolutePosition
-            local size = MainFrame.AbsoluteSize
-            
-            if not (pos.X >= absPos.X and pos.X <= absPos.X + size.X and
-                    pos.Y >= absPos.Y and pos.Y <= absPos.Y + size.Y) then
-                ToggleMenu()
-            end
-        end
-    end
-end)
-
 -- ═══════════════════════════════════════════════════════════
--- АНИМАЦИЯ ГРАДИЕНТА
+-- ЗАКРЫТИЕ ТОЛЬКО ПО КНОПКЕ ИЛИ ВНЕ GUI
 -- ═══════════════════════════════════════════════════════════
 
-RunService.RenderStepped:Connect(function()
-    if StrokeGradient and StrokeGradient.Parent then
-        StrokeGradient.Rotation = (StrokeGradient.Rotation + 0.2) % 360
-    end
-end)
+-- Отключаем закрытие по нажатию на пустое место (убран баг)
+-- Вместо этого добавляем возможность закрыть только крестиком или повторным нажатием на кнопку
 
 -- ═══════════════════════════════════════════════════════════
 -- ИНИЦИАЛИЗАЦИЯ
@@ -625,10 +592,10 @@ _G.Menu:AddCategory("📊 Инфо")
 
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 _G.Menu:AddLabel("OMEGA ULTIMATE v5.3", "📊 Инфо")
-_G.Menu:AddLabel("📱 Мобильная версия", "📊 Инфо")
+_G.Menu:AddLabel("📱 Монохромная версия", "📊 Инфо")
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 
--- ДЕМО-ФУНКЦИИ (удалите или замените)
+-- ДЕМО-ФУНКЦИИ
 _G.Menu:AddToggle("Демо-функция", function(state)
     print("Демо: " .. (state and "ВКЛ" or "ВЫКЛ"))
 end, "⚡ Основные")
@@ -646,7 +613,7 @@ _G.Menu:AddDropdown("Режим", {"Режим A", "Режим B", "Режим C
 end, "⚙️ Настройки")
 
 print("════════════════════════════════════════════════════════")
-print("⚡ OMEGA MENU v5.3 - МОБИЛЬНАЯ ВЕРСИЯ")
+print("⚡ OMEGA MENU v5.3 - МОНОХРОМНАЯ ВЕРСИЯ")
 print("📱 Нажмите ⚡ кнопку для открытия/закрытия")
-print("📌 Кнопка всегда видима на экране")
+print("❌ Закрытие только через крестик или кнопку ⚡")
 print("════════════════════════════════════════════════════════")
