@@ -1,12 +1,11 @@
 --[[
     ═══════════════════════════════════════════════════════════
-    🔥 OMEGA ULTIMATE v5.3 - МОБИЛЬНОЕ МЕНЮ 🔥
+    🔥 OMEGA ULTIMATE v5.3 - ИСПРАВЛЕННАЯ МОБИЛЬНАЯ ВЕРСИЯ 🔥
     ═══════════════════════════════════════════════════════════
-    ОСОБЕННОСТИ:
-    • Открытие по кнопке на экране или свайпу
-    • Полностью сенсорное управление
-    • Адаптировано под телефон
-    • Легко добавлять функции
+    ИСПРАВЛЕНИЯ:
+    • MouseButton1Click → Activated (работает на телефоне)
+    • Исправлены ошибки с nil значениями
+    • Оптимизировано для мобильных устройств
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -23,7 +22,8 @@ local LocalPlayer = Players.LocalPlayer
 _G.Menu = {
     Categories = {},
     Functions = {},
-    IsOpen = false
+    IsOpen = false,
+    Elements = {}
 }
 
 -- ═══════════════════════════════════════════════════════════
@@ -44,12 +44,6 @@ local COLORS = {
 }
 
 -- ═══════════════════════════════════════════════════════════
--- ПРОВЕРКА НА ТЕЛЕФОН
--- ═══════════════════════════════════════════════════════════
-
-local IsMobile = UserInputService.TouchEnabled
-
--- ═══════════════════════════════════════════════════════════
 -- СОЗДАНИЕ GUI
 -- ═══════════════════════════════════════════════════════════
 
@@ -58,16 +52,13 @@ ScreenGui.Name = "OmegaMenu"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- ═══════════════════════════════════════════════════════════
--- КНОПКА ОТКРЫТИЯ МЕНЮ (для телефона)
--- ═══════════════════════════════════════════════════════════
-
+-- Кнопка открытия меню
 local OpenButton = Instance.new("ImageButton")
-OpenButton.Size = UDim2.new(0, 50, 0, 50)
-OpenButton.Position = UDim2.new(0.02, 0, 0.88, 0)
+OpenButton.Size = UDim2.new(0, 55, 0, 55)
+OpenButton.Position = UDim2.new(0.02, 0, 0.86, 0)
 OpenButton.BackgroundColor3 = COLORS.bgSecondary
 OpenButton.BackgroundTransparency = 0.1
-OpenButton.Image = "rbxassetid://6031091071" -- Иконка меню
+OpenButton.Image = "rbxassetid://6031091071"
 OpenButton.ImageColor3 = COLORS.accent
 OpenButton.ScaleType = Enum.ScaleType.Fit
 OpenButton.Parent = ScreenGui
@@ -82,23 +73,19 @@ OpenStroke.Thickness = 1.5
 OpenStroke.Transparency = 0.3
 OpenStroke.Parent = OpenButton
 
--- Текст на кнопке
 local OpenLabel = Instance.new("TextLabel")
 OpenLabel.Size = UDim2.new(1, 0, 1, 0)
 OpenLabel.BackgroundTransparency = 1
 OpenLabel.Text = "⚡"
 OpenLabel.TextColor3 = COLORS.accent
-OpenLabel.TextSize = 24
+OpenLabel.TextSize = 26
 OpenLabel.Font = Enum.Font.Jura
 OpenLabel.Parent = OpenButton
 
--- ═══════════════════════════════════════════════════════════
--- ГЛАВНЫЙ ФРЕЙМ МЕНЮ (адаптирован под телефон)
--- ═══════════════════════════════════════════════════════════
-
+-- Главный фрейм
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0.9, 0, 0.85, 0)
-MainFrame.Position = UDim2.new(0.05, 0, 0.075, 0)
+MainFrame.Size = UDim2.new(0.92, 0, 0.85, 0)
+MainFrame.Position = UDim2.new(0.04, 0, 0.075, 0)
 MainFrame.BackgroundColor3 = COLORS.bg
 MainFrame.BackgroundTransparency = 0.08
 MainFrame.BorderSizePixel = 0
@@ -106,12 +93,10 @@ MainFrame.ClipsDescendants = true
 MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
--- Скругление
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 12)
 Corner.Parent = MainFrame
 
--- Обводка
 local Stroke = Instance.new("UIStroke")
 Stroke.Color = COLORS.border
 Stroke.Thickness = 2
@@ -119,7 +104,6 @@ Stroke.Transparency = 0.3
 Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 Stroke.Parent = MainFrame
 
--- Градиентная обводка
 local StrokeGradient = Instance.new("UIGradient")
 StrokeGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, COLORS.border),
@@ -153,7 +137,6 @@ TitleLabel.Font = Enum.Font.Jura
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleFrame
 
--- Кнопка закрытия
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 35, 0, 35)
 CloseBtn.Position = UDim2.new(1, -42, 0, 5)
@@ -164,11 +147,12 @@ CloseBtn.TextSize = 20
 CloseBtn.Font = Enum.Font.Jura
 CloseBtn.Parent = TitleFrame
 
-CloseBtn.MouseButton1Click:Connect(function()
+-- ИСПРАВЛЕНО: Используем Activated вместо MouseButton1Click
+CloseBtn.Activated:Connect(function()
     ToggleMenu()
 end)
 
--- Контейнер для категорий (левая панель) - скроллинг
+-- Контейнер для категорий
 local CategoryContainer = Instance.new("ScrollingFrame")
 CategoryContainer.Size = UDim2.new(0, 110, 1, -45)
 CategoryContainer.Position = UDim2.new(0, 0, 0, 45)
@@ -179,7 +163,7 @@ CategoryContainer.ScrollBarThickness = 2
 CategoryContainer.ScrollBarImageColor3 = COLORS.border
 CategoryContainer.Parent = MainFrame
 
--- Контейнер для функций (правая панель) - скроллинг
+-- Контейнер для функций
 local FunctionContainer = Instance.new("ScrollingFrame")
 FunctionContainer.Size = UDim2.new(1, -115, 1, -45)
 FunctionContainer.Position = UDim2.new(0, 115, 0, 45)
@@ -261,10 +245,10 @@ function CategoryButton.new(name, parent)
     self.Container.Visible = false
     self.Container.Parent = FunctionContainer
     
-    -- Обновляем CanvasSize для категорий
     parent.CanvasSize = UDim2.new(0, 0, 0, #parent:GetChildren() * 38 + 10)
     
-    btn.MouseButton1Click:Connect(function()
+    -- ИСПРАВЛЕНО: Используем Activated
+    btn.Activated:Connect(function()
         for _, child in ipairs(parent:GetChildren()) do
             if child:IsA("TextButton") then
                 child.BackgroundTransparency = 1
@@ -282,19 +266,27 @@ function CategoryButton.new(name, parent)
             end
         end
         self.Container.Visible = true
-        FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, #self.Container:GetChildren() * 30 + 10)
+        
+        -- Обновляем размер контента
+        local count = 0
+        for _, child in ipairs(self.Container:GetChildren()) do
+            if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") then
+                count = count + 1
+            end
+        end
+        FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, count * 35 + 10)
     end)
     
     -- Если это первая категория, активируем её
     if #parent:GetChildren() == 1 then
-        btn:MouseButton1Click():Wait()
+        btn.Activated:Wait()
     end
     
     return self
 end
 
 -- ═══════════════════════════════════════════════════════════
--- ФУНКЦИИ ДЛЯ ДОБАВЛЕНИЯ ЭЛЕМЕНТОВ (АДАПТИРОВАНЫ)
+-- ФУНКЦИИ ДЛЯ ДОБАВЛЕНИЯ ЭЛЕМЕНТОВ
 -- ═══════════════════════════════════════════════════════════
 
 local function UpdateContainerSize(parent)
@@ -304,7 +296,9 @@ local function UpdateContainerSize(parent)
             count = count + 1
         end
     end
-    parent.Parent.CanvasSize = UDim2.new(0, 0, 0, count * 35 + 10)
+    if parent.Parent and parent.Parent:IsA("ScrollingFrame") then
+        parent.Parent.CanvasSize = UDim2.new(0, 0, 0, count * 35 + 10)
+    end
 end
 
 local function AddLabel(text, parent)
@@ -367,7 +361,8 @@ local function AddToggle(text, callback, parent)
     
     local state = false
     
-    toggle.MouseButton1Click:Connect(function()
+    -- ИСПРАВЛЕНО: Используем Activated
+    toggle.Activated:Connect(function()
         state = not state
         if state then
             toggle.BackgroundColor3 = COLORS.accent
@@ -409,7 +404,8 @@ local function AddButton(text, callback, parent)
         btn.BackgroundTransparency = 0.5
     end)
     
-    btn.MouseButton1Click:Connect(function()
+    -- ИСПРАВЛЕНО: Используем Activated
+    btn.Activated:Connect(function()
         if callback then callback() end
     end)
     
@@ -460,6 +456,7 @@ local function AddSlider(text, min, max, default, callback, parent)
     local function UpdateSlider(input)
         local pos = input.Position.X - sliderFrame.AbsolutePosition.X
         local width = sliderFrame.AbsoluteSize.X
+        if width <= 0 then return end
         local percent = math.clamp(pos / width, 0, 1)
         value = min + (max - min) * percent
         value = math.floor(value)
@@ -527,7 +524,8 @@ local function AddDropdown(text, options, callback, parent)
     local isOpen = false
     local dropList = nil
     
-    dropdown.MouseButton1Click:Connect(function()
+    -- ИСПРАВЛЕНО: Используем Activated
+    dropdown.Activated:Connect(function()
         if isOpen then
             if dropList then dropList:Destroy() end
             isOpen = false
@@ -566,10 +564,11 @@ local function AddDropdown(text, options, callback, parent)
                 btn.BackgroundTransparency = 1
             end)
             
-            btn.MouseButton1Click:Connect(function()
+            -- ИСПРАВЛЕНО: Используем Activated
+            btn.Activated:Connect(function()
                 dropdown.Text = option
                 if callback then callback(option) end
-                dropList:Destroy()
+                if dropList then dropList:Destroy() end
                 isOpen = false
             end)
         end
@@ -582,7 +581,7 @@ local function AddDropdown(text, options, callback, parent)
 end
 
 -- ═══════════════════════════════════════════════════════════
--- ПУБЛИЧНЫЕ МЕТОДЫ ДЛЯ ДОБАВЛЕНИЯ ФУНКЦИЙ
+-- ПУБЛИЧНЫЕ МЕТОДЫ
 -- ═══════════════════════════════════════════════════════════
 
 function _G.Menu:AddCategory(name)
@@ -647,22 +646,17 @@ local function ToggleMenu()
     _G.Menu.IsOpen = not _G.Menu.IsOpen
     MainFrame.Visible = _G.Menu.IsOpen
     OpenButton.Visible = not _G.Menu.IsOpen
-    
-    if _G.Menu.IsOpen then
-        MainFrame:TweenPosition(UDim2.new(0.05, 0, 0.075, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
-    end
 end
 
--- Кнопка открытия
-OpenButton.MouseButton1Click:Connect(function()
+-- ИСПРАВЛЕНО: Используем Activated
+OpenButton.Activated:Connect(function()
     ToggleMenu()
 end)
 
--- Закрытие по нажатию на пустое место
+-- Закрытие по нажатию вне меню
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Touch then
-        -- Проверяем, нажали ли вне меню
         if MainFrame.Visible then
             local pos = input.Position
             local absPos = MainFrame.AbsolutePosition
@@ -670,7 +664,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             
             if not (pos.X >= absPos.X and pos.X <= absPos.X + size.X and
                     pos.Y >= absPos.Y and pos.Y <= absPos.Y + size.Y) then
-                -- Проверяем, не нажали ли на кнопку открытия
                 local btnPos = OpenButton.AbsolutePosition
                 local btnSize = OpenButton.AbsoluteSize
                 if not (pos.X >= btnPos.X and pos.X <= btnPos.X + btnSize.X and
@@ -683,7 +676,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ═══════════════════════════════════════════════════════════
--- ВРАЩЕНИЕ ГРАДИЕНТА ОБВОДКИ
+-- ВРАЩЕНИЕ ГРАДИЕНТА
 -- ═══════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -693,23 +686,21 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════
--- ИНИЦИАЛИЗАЦИЯ СТАНДАРТНЫХ КАТЕГОРИЙ
+-- СТАНДАРТНЫЕ КАТЕГОРИИ
 -- ═══════════════════════════════════════════════════════════
 
--- Создаем стандартные категории
 _G.Menu:AddCategory("⚡ Основные")
 _G.Menu:AddCategory("🎯 Цели")
 _G.Menu:AddCategory("⚙️ Настройки")
 _G.Menu:AddCategory("📊 Инфо")
 
--- Добавляем стандартные функции
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 _G.Menu:AddLabel("OMEGA ULTIMATE v5.3", "📊 Инфо")
 _G.Menu:AddLabel("📱 Телефон версия", "📊 Инфо")
 _G.Menu:AddLabel("Нажмите ⚡ для меню", "📊 Инфо")
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 
--- Демо-функции (можно удалить или заменить)
+-- Демо-функции
 _G.Menu:AddToggle("Демо-функция 1", function(state)
     print("[DEMO] Функция 1: " .. (state and "ВКЛ" or "ВЫКЛ"))
 end, "⚡ Основные")
@@ -719,15 +710,15 @@ _G.Menu:AddToggle("Демо-функция 2", function(state)
 end, "⚡ Основные")
 
 _G.Menu:AddSeparator("⚙️ Настройки")
-_G.Menu:AddSlider("Скорость обновления", 1, 20, 10, function(value)
+_G.Menu:AddSlider("Скорость", 1, 20, 10, function(value)
     print("[DEMO] Скорость: " .. value)
 end, "⚙️ Настройки")
 
-_G.Menu:AddDropdown("Выбор режима", {"Режим A", "Режим B", "Режим C"}, function(selected)
-    print("[DEMO] Выбран режим: " .. selected)
+_G.Menu:AddDropdown("Режим", {"Режим A", "Режим B", "Режим C"}, function(selected)
+    print("[DEMO] Режим: " .. selected)
 end, "⚙️ Настройки")
 
-_G.Menu:AddButton("Тестовая кнопка", function()
+_G.Menu:AddButton("Тест", function()
     print("[DEMO] Кнопка нажата!")
 end, "⚡ Основные")
 
