@@ -1,5 +1,6 @@
--- MM2 Murderer Aim Lock V2.6 + OUTLINE + BOMB JUMP+ + WALLHOP
--- RT SYSTEM с GUI стилем OMNIVERSE v5.3
+-- MM2 ULTIMATE PACKAGE v2.6
+-- Aim Lock + Outline + Bomb Jump + Wallhop + RT SYSTEM
+-- СТИЛЬ: OMNIVERSE + MONOCHROME
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -62,6 +63,7 @@ local function getfserv(s)
     return game[s]
 end
 
+local __RS = getfserv("RunService")
 local __UIS = getfserv("UserInputService")
 local __PLRS = getfserv("Players")
 local __TS = getfserv("TweenService")
@@ -69,27 +71,302 @@ local __TS = getfserv("TweenService")
 local __UD2 = UDim2.new
 local __UD = UDim.new
 local __V2 = Vector2.new
+local __PCLR = Color3.new
 local __RGB = Color3.fromRGB
 
 -- ==============================================
--- СОЗДАНИЕ GUI ДЛЯ RESET
+-- ЦВЕТОВЫЕ НАСТРОЙКИ GUI
 -- ==============================================
-local function CreateResetGUI()
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "MM2_RT_GUI"
-    gui.ResetOnSpawn = false
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Enabled = false
-    
-    local parent = CoreGui
-    pcall(function()
-        parent = gethui and gethui() or CoreGui
-    end)
-    gui.Parent = parent
-    return gui
+local GUI_STYLES = {
+    OMNIVERSE = {
+        name = "OMNIVERSE",
+        bg = __RGB(10, 8, 15),
+        bgTitle = __RGB(25, 18, 40),
+        border = __RGB(120, 80, 200),
+        text = __RGB(200, 190, 220),
+        accent = __RGB(150, 110, 255),
+        bgHover = __RGB(40, 28, 70),
+        statusActive = __RGB(100, 255, 150),
+        statusOff = __RGB(200, 80, 80),
+        btnBg = __RGB(30, 22, 50),
+        gradient1 = __RGB(120, 80, 200),
+        gradient2 = __RGB(200, 150, 255),
+        gradient3 = __RGB(120, 80, 200),
+    },
+    MONOCHROME = {
+        name = "MONOCHROME",
+        bg = __RGB(0, 0, 0),
+        bgTitle = __RGB(30, 30, 30),
+        border = __RGB(255, 255, 255),
+        text = __RGB(200, 200, 200),
+        accent = __RGB(255, 255, 255),
+        bgHover = __RGB(60, 60, 60),
+        statusActive = __RGB(169, 169, 169),
+        statusOff = __RGB(100, 100, 100),
+        btnBg = __RGB(40, 40, 40),
+        gradient1 = __RGB(255, 255, 255),
+        gradient2 = __RGB(169, 169, 169),
+        gradient3 = __RGB(255, 255, 255),
+    }
+}
+
+local CurrentStyle = "OMNIVERSE"
+
+local function GetColors()
+    return GUI_STYLES[CurrentStyle] or GUI_STYLES.OMNIVERSE
 end
 
-local ResetGUI = CreateResetGUI()
+-- ==============================================
+-- BINDABLE BUTTONS (С ПЕРЕТАСКИВАНИЕМ)
+-- ==============================================
+local BindableButtons = {Buttons = {}, Maids = {}, Count = 0}
+
+local __SHAPES = {
+    [0] = "rbxassetid://86221076925479",
+    [1] = "rbxassetid://96242665417546",
+    [2] = "rbxassetid://97129189935336",
+    [3] = "rbxassetid://76165862027868",
+    [4] = "rbxassetid://125868092127496"
+}
+
+local __NORMAL_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.133333, 0.827451, 0.494118)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.231373, 0.509804, 0.498039)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.501961, 0.501961, 0.501961))
+})
+
+local __ACTIVE_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.0, 0.8, 0.4)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.0, 0.5, 0.3)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.2, 0.8, 0.6))
+})
+
+local __WALL_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.0, 0.4, 0.8)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.0, 0.3, 0.6)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.2, 0.5, 0.8))
+})
+
+local __OUTLINE_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(1.0, 0.0, 0.0)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.8, 0.0, 0.2)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.6, 0.0, 0.3))
+})
+
+local __BOMB_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 100, 0)),
+    ColorSequenceKeypoint.new(0.6, __RGB(200, 50, 0)),
+    ColorSequenceKeypoint.new(1,   __RGB(150, 30, 0))
+})
+
+local __GOLD_BOMB_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(255, 215, 0)),
+    ColorSequenceKeypoint.new(0.6, __RGB(255, 140, 0)),
+    ColorSequenceKeypoint.new(1,   __RGB(184, 134, 11))
+})
+
+local __WALLHOP_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(0, 200, 255)),
+    ColorSequenceKeypoint.new(0.6, __RGB(0, 100, 255)),
+    ColorSequenceKeypoint.new(1,   __RGB(50, 50, 255))
+})
+
+local __RT_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __RGB(200, 80, 180)),
+    ColorSequenceKeypoint.new(0.5, __RGB(150, 110, 255)),
+    ColorSequenceKeypoint.new(1,   __RGB(200, 80, 180))
+})
+
+local muteButtonSounds = false
+
+local function bind_safecallback(callback)
+    if not callback then return end
+    local ok, err = xpcall(callback, function(e) return debug.traceback(e) end)
+    if not ok then warn("[BIND ERROR] " .. tostring(err)) end
+end
+
+local function Bind_GetStorage()
+    local parent = gethui and gethui()
+    if not parent or typeof(parent) ~= "Instance" then parent = CoreGui end
+    if not parent or typeof(parent) ~= "Instance" then
+        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui", 5)
+    end
+    if typeof(parent) ~= "Instance" then
+        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    local sg = parent:FindFirstChild("@bindstorage")
+    if not sg then
+        sg = Instance.new("ScreenGui")
+        sg.Name = "@bindstorage"
+        sg.ResetOnSpawn = false
+        sg.IgnoreGuiInset = true
+        pcall(function() sg.ScreenInsets = Enum.ScreenInsets.None end)
+        sg.Parent = parent
+    end
+    return sg
+end
+
+function BindableButtons.AddBButton(id, text, clickFunc, colorType, customSize)
+    if BindableButtons.Buttons[id] then return end
+    
+    local buttonMaid = Maid.new()
+    local camera = Workspace.CurrentCamera
+    local screen = camera.ViewportSize
+    local buttonSizeY = customSize or 0.10
+    local widthScale = buttonSizeY * (screen.Y / screen.X)
+    local xPos = 0.06 + ((BindableButtons.Count % 8) * (widthScale + 0.008))
+    local yPos = 0.82 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
+
+    local ImageButton = Instance.new("ImageButton")
+    ImageButton.Name = id
+    ImageButton.Size = __UD2(widthScale, 0, buttonSizeY, 0)
+    ImageButton.Position = __UD2(xPos, 0, yPos, 0)
+    ImageButton.AnchorPoint = __V2(0.5, 0.5)
+    ImageButton.Image = __SHAPES[0]
+    ImageButton.BackgroundTransparency = 1
+    ImageButton.BorderSizePixel = 0
+    ImageButton.ClipsDescendants = false
+    ImageButton.AutoButtonColor = false
+    ImageButton.Parent = Bind_GetStorage()
+    buttonMaid:GiveTask(ImageButton)
+
+    local TextLabel = Instance.new("TextLabel", ImageButton)
+    TextLabel.Name = "@Text"
+    TextLabel.Size = __UD2(0.8, 0, 0.8, 0)
+    TextLabel.Position = __UD2(0.5, 0, 0.5, 0)
+    TextLabel.AnchorPoint = __V2(0.5, 0.5)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Font = Enum.Font.Jura
+    TextLabel.Text = text
+    TextLabel.TextColor3 = __PCLR(1, 1, 1)
+    TextLabel.TextSize = math.floor(buttonSizeY * 90)
+    TextLabel.TextWrapped = true
+    TextLabel.ZIndex = 3
+
+    local Aspect = Instance.new("UIAspectRatioConstraint", ImageButton)
+    Aspect.AspectRatio = 1
+    Aspect.AspectType = Enum.AspectType.ScaleWithParentSize
+
+    local Stroke = Instance.new("UIGradient", ImageButton)
+    Stroke.Name = "@Stroke"
+    if colorType == "wall" then
+        Stroke.Color = __WALL_COLOR
+    elseif colorType == "outline" then
+        Stroke.Color = __OUTLINE_COLOR
+    elseif colorType == "bomb" then
+        Stroke.Color = __BOMB_COLOR
+    elseif colorType == "goldbomb" then
+        Stroke.Color = __GOLD_BOMB_COLOR
+    elseif colorType == "wallhop" then
+        Stroke.Color = __WALLHOP_COLOR
+    elseif colorType == "rt" then
+        Stroke.Color = __RT_COLOR
+    else
+        Stroke.Color = __NORMAL_COLOR
+    end
+
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://3868133279"
+    sound.Volume = muteButtonSounds and 0 or 0.5
+    sound.Parent = ImageButton
+
+    -- ПЕРЕТАСКИВАНИЕ
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    local hasMoved = false
+
+    ImageButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = ImageButton.Position
+            hasMoved = false
+            sound:Play()
+        end
+    end)
+
+    ImageButton.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            if not hasMoved then
+                bind_safecallback(clickFunc)
+            end
+        end
+    end)
+
+    __UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            if delta.Magnitude > 7 then hasMoved = true end
+            local screenSize = ImageButton.Parent.AbsoluteSize
+            if screenSize.X > 0 and screenSize.Y > 0 then
+                ImageButton.Position = __UD2(
+                    startPos.X.Scale + (delta.X / screenSize.X),
+                    0,
+                    startPos.Y.Scale + (delta.Y / screenSize.Y),
+                    0
+                )
+            end
+        end
+    end)
+
+    buttonMaid:GiveTask(__RS.RenderStepped:Connect(function()
+        Stroke.Rotation = (Stroke.Rotation + 1) % 360
+    end))
+
+    BindableButtons.Buttons[id] = ImageButton
+    BindableButtons.Maids[id] = buttonMaid
+    BindableButtons.Count = BindableButtons.Count + 1
+    return ImageButton
+end
+
+function BindableButtons.DeleteBButton(id)
+    if BindableButtons.Maids[id] then
+        BindableButtons.Maids[id]:Destroy()
+        BindableButtons.Maids[id] = nil
+        BindableButtons.Buttons[id] = nil
+    end
+end
+
+function BindableButtons.UpdateBButtonText(id, text)
+    local btn = BindableButtons.Buttons[id]
+    if not btn then return end
+    
+    local textLabel = btn:FindFirstChild("@Text")
+    if textLabel then
+        textLabel.Text = text
+    end
+end
+
+function BindableButtons.UpdateBButtonColor(id, isActive, colorType)
+    local btn = BindableButtons.Buttons[id]
+    if not btn then return end
+    
+    local stroke = btn:FindFirstChild("@Stroke")
+    if stroke then
+        if isActive then
+            stroke.Color = __ACTIVE_COLOR
+        else
+            if colorType == "wall" then
+                stroke.Color = __WALL_COLOR
+            elseif colorType == "outline" then
+                stroke.Color = __OUTLINE_COLOR
+            elseif colorType == "bomb" then
+                stroke.Color = __BOMB_COLOR
+            elseif colorType == "goldbomb" then
+                stroke.Color = __GOLD_BOMB_COLOR
+            elseif colorType == "wallhop" then
+                stroke.Color = __WALLHOP_COLOR
+            elseif colorType == "rt" then
+                stroke.Color = __RT_COLOR
+            else
+                stroke.Color = __NORMAL_COLOR
+            end
+        end
+    end
+end
 
 -- ==============================================
 -- ОПРЕДЕЛЕНИЕ РОЛЕЙ
@@ -200,7 +477,885 @@ local function GetPlayerRole(plr)
 end
 
 -- ==============================================
--- RESET PLAYER СИСТЕМА
+-- ФУНКЦИЯ ПРОВЕРКИ ВИДИМОСТИ (WALLCHECK)
+-- ==============================================
+function IsPlayerVisible(plr)
+    if not plr or not plr.Character then return false end
+    
+    local targetPart = plr.Character:FindFirstChild("HumanoidRootPart")
+    if not targetPart then return false end
+    
+    local CurrentCamera = Workspace.CurrentCamera
+    if not CurrentCamera then return false end
+    
+    local raycastParams = RaycastParams.new()
+    local filterList = {}
+    
+    if LocalPlayer.Character then 
+        table.insert(filterList, LocalPlayer.Character) 
+    end
+    
+    raycastParams.FilterDescendantsInstances = filterList
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local origin = CurrentCamera.CFrame.Position
+    local direction = targetPart.Position - origin
+    local result = Workspace:Raycast(origin, direction, raycastParams)
+    
+    if not result then return true end
+    return result.Instance:IsDescendantOf(plr.Character)
+end
+
+-- ==============================================
+-- AIM LOCK
+-- ==============================================
+local AimLockEnabled = false
+local TargetPart = "HumanoidRootPart"
+local TargetPlayer = nil
+local WallCheckEnabled = false
+local PredictionLevel = 0.2
+local LastSearchTime = 0
+local LastWallCheckTime = 0
+local IsTargetVisibleCache = false
+local WALL_CHECK_INTERVAL = 0.15 
+local InvisibleTimer = 0
+local MAX_INVISIBLE_TIME = 0.5
+
+function FindMurderer(preferTarget)
+    if preferTarget and preferTarget.Character then
+        local hum = preferTarget.Character:FindFirstChild("Humanoid")
+        if hum and hum.Health > 0 then
+            if GetPlayerRole(preferTarget) == "Murderer" then
+                if not WallCheckEnabled or IsPlayerVisible(preferTarget) then
+                    return preferTarget
+                end
+            end
+        end
+    end
+
+    local bestTarget = nil
+    local bestDist = math.huge
+    
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer and pl.Character then
+            local role = GetPlayerRole(pl)
+            if role == "Murderer" then
+                local hum = pl.Character:FindFirstChild("Humanoid")
+                if hum and hum.Health > 0 then
+                    if WallCheckEnabled and not IsPlayerVisible(pl) then
+                        continue
+                    end
+                    
+                    local root = pl.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot then
+                            local dist = (root.Position - myRoot.Position).Magnitude
+                            if dist < bestDist then
+                                bestDist = dist
+                                bestTarget = pl
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return bestTarget
+end
+
+local function AimLockLoop(deltaTime)
+    if not AimLockEnabled then return end
+    
+    local CurrentCamera = Workspace.CurrentCamera 
+    if not CurrentCamera then return end
+
+    local valid = false
+    if TargetPlayer and TargetPlayer.Character then
+        local hum = TargetPlayer.Character:FindFirstChild("Humanoid")
+        if hum and hum.Health > 0 then
+            if GetPlayerRole(TargetPlayer) == "Murderer" then
+                valid = true
+            end
+        end
+    end
+    
+    if WallCheckEnabled and valid then
+        local currentTime = os.clock()
+        if currentTime - LastWallCheckTime > WALL_CHECK_INTERVAL then
+            IsTargetVisibleCache = IsPlayerVisible(TargetPlayer)
+            LastWallCheckTime = currentTime
+        end
+        if not IsTargetVisibleCache then
+            InvisibleTimer = InvisibleTimer + deltaTime
+            if InvisibleTimer > MAX_INVISIBLE_TIME then
+                valid = false
+            end
+        else
+            InvisibleTimer = 0
+        end
+    else
+        InvisibleTimer = 0
+    end
+    
+    if not valid then 
+        local currentTime = os.clock()
+        if currentTime - LastSearchTime > 0.1 then
+            TargetPlayer = FindMurderer(TargetPlayer)
+            LastSearchTime = currentTime
+        end
+    end
+    
+    if TargetPlayer and TargetPlayer.Character then
+        local targetNode = TargetPlayer.Character:FindFirstChild(TargetPart)
+        
+        if targetNode then
+            local vel = targetNode.AssemblyLinearVelocity or Vector3.new()
+            local predVector = Vector3.new(vel.X, vel.Y * 0.3, vel.Z)
+            local predictedPos = targetNode.Position + (predVector * PredictionLevel)
+            
+            CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, predictedPos)
+        end
+    end
+end
+
+-- ==============================================
+-- OUTLINE СИСТЕМА
+-- ==============================================
+local OutlineEnabled = false
+local OutlinedPlayers = {}
+local OutlineMaid = Maid.new()
+local OutlineUpdateRate = 0.05
+local LastOutlineUpdate = 0
+local PlayerConnections = {}
+
+local function GetOutlineColor(role, isDead)
+    if isDead then
+        return Color3.fromRGB(128, 128, 128)
+    end
+    
+    if role == "Murderer" then
+        return Color3.fromRGB(255, 0, 0)
+    elseif role == "Sheriff" then
+        return Color3.fromRGB(0, 150, 255)
+    elseif role == "Innocent" then
+        return Color3.fromRGB(0, 255, 0)
+    else
+        return Color3.fromRGB(255, 255, 255)
+    end
+end
+
+local function GetRoleEmoji(role)
+    if role == "Murderer" then
+        return "🔪"
+    elseif role == "Sheriff" then
+        return "🔫"
+    elseif role == "Innocent" then
+        return "👤"
+    else
+        return "❓"
+    end
+end
+
+local function IsPlayerInGame(plr)
+    if not plr or not plr.Character then return false end
+    
+    local humanoid = plr.Character:FindFirstChild("Humanoid")
+    if not humanoid then return false end
+    if humanoid.Health <= 0 then return false end
+    
+    return true
+end
+
+local function ApplyOutline(plr)
+    if not plr or plr == LocalPlayer then return end
+    if OutlinedPlayers[plr] then return end
+    if not plr.Character then return end
+    
+    local role = GetPlayerRole(plr)
+    local isDead = (role == "Dead" or role == "Unknown" or role == nil)
+    local inGame = IsPlayerInGame(plr)
+    
+    if isDead or not inGame then
+        return
+    end
+    
+    local color = GetOutlineColor(role, false)
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Outline_Highlight"
+    highlight.FillTransparency = 1
+    highlight.OutlineTransparency = 0.2
+    highlight.OutlineColor = color
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee = plr.Character
+    highlight.Parent = plr.Character
+    
+    local head = plr.Character:FindFirstChild("Head")
+    local billboard = nil
+    local nameLabel = nil
+    
+    if head then
+        billboard = Instance.new("BillboardGui")
+        billboard.Name = "Outline_NameTag"
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.Adornee = head
+        billboard.Parent = plr.Character
+        billboard.AlwaysOnTop = true
+        
+        nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = GetRoleEmoji(role) .. " " .. plr.Name .. " [" .. role .. "]"
+        nameLabel.TextColor3 = color
+        nameLabel.TextSize = 14
+        nameLabel.Font = Enum.Font.Jura
+        nameLabel.TextStrokeTransparency = 0.2
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.Parent = billboard
+    end
+    
+    OutlinedPlayers[plr] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Label = nameLabel,
+        Role = role
+    }
+end
+
+local function RemoveOutline(plr)
+    if OutlinedPlayers[plr] then
+        local data = OutlinedPlayers[plr]
+        if data.Highlight then 
+            pcall(function() data.Highlight:Destroy() end)
+        end
+        if data.Billboard then 
+            pcall(function() data.Billboard:Destroy() end)
+        end
+        OutlinedPlayers[plr] = nil
+    end
+end
+
+local function FullRefreshOutline()
+    for plr, _ in pairs(OutlinedPlayers) do
+        RemoveOutline(plr)
+    end
+    
+    if OutlineEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local role = GetPlayerRole(plr)
+                if role and role ~= "Dead" and role ~= "Unknown" then
+                    if IsPlayerInGame(plr) then
+                        ApplyOutline(plr)
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function UpdateOutline()
+    if OutlineEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local role = GetPlayerRole(plr)
+                local isDead = (role == "Dead" or role == "Unknown" or role == nil)
+                local inGame = IsPlayerInGame(plr)
+                
+                if isDead or not inGame then
+                    if OutlinedPlayers[plr] then
+                        RemoveOutline(plr)
+                    end
+                else
+                    if OutlinedPlayers[plr] then
+                        local data = OutlinedPlayers[plr]
+                        if data.Role ~= role then
+                            local color = GetOutlineColor(role, false)
+                            if data.Highlight then
+                                data.Highlight.OutlineColor = color
+                            end
+                            if data.Label then
+                                data.Label.Text = GetRoleEmoji(role) .. " " .. plr.Name .. " [" .. role .. "]"
+                                data.Label.TextColor3 = color
+                            end
+                            data.Role = role
+                        end
+                    else
+                        ApplyOutline(plr)
+                    end
+                end
+            end
+        end
+    else
+        for plr, _ in pairs(OutlinedPlayers) do
+            RemoveOutline(plr)
+        end
+    end
+end
+
+local function OutlineUpdateLoop()
+    if not OutlineEnabled then return end
+    
+    local now = os.clock()
+    if now - LastOutlineUpdate < OutlineUpdateRate then return end
+    LastOutlineUpdate = now
+    
+    UpdateOutline()
+end
+
+local function SetupPlayer(plr)
+    if plr == LocalPlayer then return end
+    
+    if PlayerConnections[plr] then
+        PlayerConnections[plr]:Disconnect()
+        PlayerConnections[plr] = nil
+    end
+    
+    if OutlineEnabled then
+        task.wait(0.05)
+        
+        if plr.Character then
+            local role = GetPlayerRole(plr)
+            if role and role ~= "Dead" and role ~= "Unknown" then
+                if IsPlayerInGame(plr) then
+                    ApplyOutline(plr)
+                end
+            end
+        end
+        
+        local conn = plr.CharacterAdded:Connect(function()
+            task.wait(0.05)
+            
+            if OutlineEnabled then
+                RemoveOutline(plr)
+                local role = GetPlayerRole(plr)
+                if role and role ~= "Dead" and role ~= "Unknown" then
+                    if IsPlayerInGame(plr) then
+                        ApplyOutline(plr)
+                    end
+                end
+            end
+        end)
+        
+        PlayerConnections[plr] = conn
+        OutlineMaid:GiveTask(conn)
+    else
+        local conn = plr.CharacterAdded:Connect(function()
+            if OutlineEnabled then
+                task.wait(0.05)
+                RemoveOutline(plr)
+                local role = GetPlayerRole(plr)
+                if role and role ~= "Dead" and role ~= "Unknown" then
+                    if IsPlayerInGame(plr) then
+                        ApplyOutline(plr)
+                    end
+                end
+            end
+        end)
+        
+        PlayerConnections[plr] = conn
+        OutlineMaid:GiveTask(conn)
+    end
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr ~= LocalPlayer then
+        SetupPlayer(plr)
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    SetupPlayer(plr)
+    
+    task.wait(0.1)
+    if OutlineEnabled and plr.Character and not OutlinedPlayers[plr] then
+        local role = GetPlayerRole(plr)
+        if role and role ~= "Dead" and role ~= "Unknown" and IsPlayerInGame(plr) then
+            ApplyOutline(plr)
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    RemoveOutline(plr)
+    if PlayerConnections[plr] then
+        PlayerConnections[plr]:Disconnect()
+        PlayerConnections[plr] = nil
+    end
+end)
+
+local function OnRoundChange()
+    task.wait(0.2)
+    
+    if OutlineEnabled then
+        FullRefreshOutline()
+    end
+end
+
+local LastPlayerCount = #Players:GetPlayers()
+Players.PlayerAdded:Connect(function()
+    task.wait(0.1)
+    if #Players:GetPlayers() ~= LastPlayerCount then
+        LastPlayerCount = #Players:GetPlayers()
+        OnRoundChange()
+    end
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.1)
+    if #Players:GetPlayers() ~= LastPlayerCount then
+        LastPlayerCount = #Players:GetPlayers()
+        OnRoundChange()
+    end
+end)
+
+-- ==============================================
+-- BOMB JUMP+ СИСТЕМА
+-- ==============================================
+local BOMB_NAMES = {
+    "FakeBomb", 
+    "Bomb", 
+    "GiftBomb", 
+    "PresentBomb",
+    "Snowball",
+    "CandyBomb"
+}
+
+local BombJumpState = {
+    enabled = false,
+    onCooldown = false,
+    debounce = false,
+    autoGetBomb = true,
+    justRespawned = false,
+    cooldownTime = 22,
+    power = 58,
+    bindButton = nil
+}
+
+local function IsPlayerInAir()
+    local character = LocalPlayer.Character
+    if not character then return false end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return false end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return false end
+    
+    local state = humanoid:GetState()
+    if state == Enum.HumanoidStateType.Jumping or 
+       state == Enum.HumanoidStateType.FallingDown or
+       state == Enum.HumanoidStateType.Freefall then
+        return true
+    end
+    
+    local velocityY = rootPart.Velocity.Y
+    return math.abs(velocityY) > 0.5
+end
+
+local function ResetBombCooldown()
+    BombJumpState.onCooldown = false
+    if BombJumpState.bindButton then
+        BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
+    end
+end
+
+local function StartBombCooldown()
+    BombJumpState.onCooldown = true
+    BombJumpState.debounce = false
+    
+    if BombJumpState.bindButton then
+        BindableButtons.UpdateBButtonText("bombjump_bind", "Wait")
+    end
+    
+    task.spawn(function()
+        for i = BombJumpState.cooldownTime, 1, -1 do
+            if not BombJumpState.onCooldown then break end
+            if BombJumpState.bindButton then
+                BindableButtons.UpdateBButtonText("bombjump_bind", tostring(i))
+            end
+            task.wait(1)
+        end
+        if BombJumpState.onCooldown then ResetBombCooldown() end
+    end)
+end
+
+local function GetCenterPosition()
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local root = character.HumanoidRootPart
+        local lookDir = Workspace.CurrentCamera.CFrame.LookVector
+        return root.Position + (lookDir * 3) + Vector3.new(0, -2, 0)
+    end
+    return nil
+end
+
+local function MakeCharacterJump()
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end
+
+local function UnequipBomb(bombName)
+    task.spawn(function()
+        task.wait(0.5)
+        local character = LocalPlayer.Character
+        if character then
+            local bomb = character:FindFirstChild(bombName)
+            if bomb then
+                bomb.Parent = LocalPlayer.Backpack or character
+            end
+        end
+    end)
+end
+
+local function GetAnyBomb()
+    local character = LocalPlayer.Character
+    if not character then return false, nil end
+    
+    for _, name in ipairs(BOMB_NAMES) do
+        local bomb = character:FindFirstChild(name)
+        if bomb then return true, bomb end
+    end
+    
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        for _, name in ipairs(BOMB_NAMES) do
+            local bomb = backpack:FindFirstChild(name)
+            if bomb then
+                bomb.Parent = character
+                return true, bomb
+            end
+        end
+    end
+    
+    local success = false
+    local attempts = 0
+    while not success and attempts < 3 do
+        attempts = attempts + 1
+        local ok = pcall(function()
+            ReplicatedStorage.Remotes.Extras.ReplicateToy:InvokeServer("FakeBomb")
+        end)
+        if ok then 
+            success = true
+            break
+        end
+        task.wait(0.1)
+    end
+    
+    if success then
+        for _ = 1, 5 do
+            for _, name in ipairs(BOMB_NAMES) do
+                local bomb = character:FindFirstChild(name)
+                if bomb then return true, bomb end
+                if backpack then
+                    bomb = backpack:FindFirstChild(name)
+                    if bomb then
+                        bomb.Parent = character
+                        return true, bomb
+                    end
+                end
+            end
+            task.wait(0.05)
+        end
+    end
+    
+    return false, nil
+end
+
+local function IsHoldingBomb()
+    local character = LocalPlayer.Character
+    if not character then return false end
+    
+    for _, name in ipairs(BOMB_NAMES) do
+        if character:FindFirstChild(name) then
+            return true
+        end
+    end
+    return false
+end
+
+local function FastBombJump()
+    if not IsPlayerInAir() then return end
+    if BombJumpState.onCooldown or BombJumpState.debounce or BombJumpState.justRespawned then return end
+    BombJumpState.debounce = true
+    
+    local success, bomb = GetAnyBomb()
+    
+    if success and bomb then
+        local position = GetCenterPosition()
+        if position then
+            local remote = bomb:FindFirstChild("Remote")
+            if remote then
+                pcall(function()
+                    remote:FireServer(CFrame.new(position), 50)
+                end)
+            end
+            
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
+                local currentVelocity = root.AssemblyLinearVelocity
+                root.AssemblyLinearVelocity = Vector3.new(
+                    currentVelocity.X, 
+                    currentVelocity.Y + BombJumpState.power, 
+                    currentVelocity.Z
+                )
+            end
+            
+            MakeCharacterJump()
+            UnequipBomb(bomb.Name)
+            
+            task.spawn(function()
+                task.wait(0.1)
+                StartBombCooldown()
+            end)
+        end
+    end
+    
+    task.spawn(function()
+        task.wait(0.5)
+        BombJumpState.debounce = false
+    end)
+end
+
+-- ==============================================
+-- WALLHOP СИСТЕМА
+-- ==============================================
+local WallhopState = {
+    enabled = false,
+    detectionDistance = 3,
+    flickPower = 50,
+    isFlicking = false,
+    lastFlickTime = 0,
+    isJumpKeyPressed = false,
+    lastHitInstance = nil,
+    currentHitInstance = nil,
+}
+
+local wallRaycastParams = RaycastParams.new()
+wallRaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+local function isPlayerCharacter(instance)
+    if not instance then return false end
+    local current = instance
+    while current do
+        if current:IsA("Model") and current:FindFirstChildOfClass("Humanoid") then
+            local players = Players:GetPlayers()
+            for _, player in ipairs(players) do
+                if player.Character == current then
+                    return true
+                end
+            end
+        end
+        current = current.Parent
+    end
+    return false
+end
+
+local function isWall(instance)
+    if not instance or not instance.IsA then return false end
+    
+    if instance:IsA("Part") and instance.Parent and instance.Parent:IsA("Model") and instance.Parent:FindFirstChild("Humanoid") then
+        return false
+    end
+    
+    local current = instance
+    while current do
+        if isPlayerCharacter(current) then
+            return false
+        end
+        current = current.Parent
+    end
+    
+    if not instance:IsA("BasePart") and not instance:IsA("Terrain") then
+        return false
+    end
+    
+    if instance:IsA("BasePart") and not instance.CanCollide then
+        return false
+    end
+    
+    return true
+end
+
+local function getWallRaycastResult()
+    local character = LocalPlayer.Character
+    if not character then return nil end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    
+    local players = Players:GetPlayers()
+    local blacklist = {character}
+    for _, player in ipairs(players) do
+        if player ~= LocalPlayer and player.Character then
+            table.insert(blacklist, player.Character)
+        end
+    end
+    wallRaycastParams.FilterDescendantsInstances = blacklist
+    
+    local closestHit, minDistance = nil, WallhopState.detectionDistance
+    local hrpCF = hrp.CFrame
+    for i = 0,7 do
+        local angle = math.rad(i*45)
+        local dir = (hrpCF * CFrame.Angles(0, angle, 0)).LookVector
+        local ray = Workspace:Raycast(hrp.Position, dir * WallhopState.detectionDistance, wallRaycastParams)
+        if ray and ray.Instance and ray.Distance < minDistance then
+            local hitInstance = ray.Instance
+            if isWall(hitInstance) then
+                minDistance = ray.Distance
+                closestHit = ray
+            end
+        end
+    end
+    return closestHit
+end
+
+local function performVideoFlick()
+    if not WallhopState.enabled then return end
+    if WallhopState.isFlicking then return end
+    WallhopState.isFlicking = true
+    
+    local char = LocalPlayer.Character
+    if not char then WallhopState.isFlicking = false return end
+    
+    local hum = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then WallhopState.isFlicking = false return end
+    
+    if hum.Health <= 0 then WallhopState.isFlicking = false return end
+    
+    local currentVel = hrp.Velocity
+    
+    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    hrp.Velocity = Vector3.new(currentVel.X, WallhopState.flickPower, currentVel.Z)
+    
+    local Camera = Workspace.CurrentCamera
+    local startCFrame = Camera.CFrame
+    Camera.CFrame = startCFrame * CFrame.Angles(0, math.rad(180), 0)
+    
+    task.wait(0.01)
+    Camera.CFrame = startCFrame
+    
+    WallhopState.isFlicking = false
+end
+
+local function performWallhop()
+    if not WallhopState.enabled then return end
+    
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not (humanoid and rootPart and humanoid:GetState() ~= Enum.HumanoidStateType.Dead) then return end
+    
+    local wall = getWallRaycastResult()
+    if not wall then return end
+
+    rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + wall.Normal)
+    RunService.Heartbeat:Wait()
+    
+    if humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        task.wait(0.1)
+    end
+end
+
+local WallhopMaid = Maid.new()
+RootMaid:GiveTask(WallhopMaid)
+
+WallhopMaid:GiveTask(RunService.Heartbeat:Connect(function()
+    if not WallhopState.enabled or WallhopState.isFlicking then return end
+    
+    local char = LocalPlayer.Character
+    if not char then 
+        WallhopState.lastHitInstance = nil
+        return 
+    end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    if not hrp or not hum or hum.Health <= 0 then 
+        WallhopState.lastHitInstance = nil
+        return 
+    end
+    
+    if not WallhopState.isJumpKeyPressed then 
+        WallhopState.lastHitInstance = nil
+        return 
+    end
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {char}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.IgnoreWater = true
+    
+    local Camera = Workspace.CurrentCamera
+    local direction = Camera.CFrame.LookVector * WallhopState.detectionDistance
+    local result = Workspace:Raycast(hrp.Position, direction, raycastParams)
+    
+    WallhopState.currentHitInstance = nil
+    
+    if result then
+        local hitInstance = result.Instance
+        
+        if isWall(hitInstance) then
+            WallhopState.currentHitInstance = hitInstance
+            
+            if WallhopState.lastHitInstance and WallhopState.lastHitInstance ~= WallhopState.currentHitInstance then
+                local currentTime = os.clock()
+                if currentTime - WallhopState.lastFlickTime > 0.1 then
+                    WallhopState.lastFlickTime = currentTime
+                    performVideoFlick()
+                end
+            end
+        end
+    end
+    
+    WallhopState.lastHitInstance = WallhopState.currentHitInstance
+end))
+
+WallhopMaid:GiveTask(UserInputService.JumpRequest:Connect(function()
+    if WallhopState.enabled then
+        performWallhop()
+    end
+end))
+
+WallhopMaid:GiveTask(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Space then
+        WallhopState.isJumpKeyPressed = true
+    end
+end))
+
+WallhopMaid:GiveTask(UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Space then
+        WallhopState.isJumpKeyPressed = false
+        WallhopState.lastHitInstance = nil
+    end
+end))
+
+WallhopMaid:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
+    WallhopState.lastHitInstance = nil
+    WallhopState.currentHitInstance = nil
+    WallhopState.isFlicking = false
+end))
+
+WallhopMaid:GiveTask(UserInputService.WindowFocused:Connect(function()
+    WallhopState.isJumpKeyPressed = false
+    WallhopState.lastHitInstance = nil
+end))
+
+-- ==============================================
+-- RT SYSTEM (RESET)
 -- ==============================================
 local ResetState = {
     noclipEnabled = false,
@@ -545,21 +1700,31 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- ГЛАВНЫЙ GUI (СТИЛЬ OMNIVERSE)
+-- СОЗДАНИЕ GUI ДЛЯ RESET
+-- ==============================================
+local function CreateResetGUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "MM2_RT_GUI"
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.Enabled = false
+    
+    local parent = CoreGui
+    pcall(function()
+        parent = gethui and gethui() or CoreGui
+    end)
+    gui.Parent = parent
+    return gui
+end
+
+local ResetGUI = CreateResetGUI()
+
+-- ==============================================
+-- ГЛАВНЫЙ GUI (СТИЛЬ OMNIVERSE/MONOCHROME)
 -- ==============================================
 local function CreateResetGUIElements()
-    -- Цвета (стиль OMNIVERSE)
-    local COLORS = {
-        bg = __RGB(10, 8, 15),
-        bgTitle = __RGB(25, 18, 40),
-        border = __RGB(120, 80, 200),
-        text = __RGB(200, 190, 220),
-        accent = __RGB(150, 110, 255),
-        bgHover = __RGB(40, 28, 70),
-        statusActive = __RGB(100, 255, 150),
-        statusOff = __RGB(200, 80, 80),
-    }
-
+    local COLORS = GetColors()
+    
     -- Главный фрейм
     local frame = Instance.new("Frame")
     frame.Name = "RTMainFrame"
@@ -572,28 +1737,24 @@ local function CreateResetGUIElements()
     frame.ClipsDescendants = true
     frame.Parent = ResetGUI
     
-    -- Скругление
     local corner = Instance.new("UICorner")
     corner.CornerRadius = __UD(0, 8)
     corner.Parent = frame
     
-    -- Обводка
     local stroke = Instance.new("UIStroke")
     stroke.Color = COLORS.border
     stroke.Thickness = 1.5
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = frame
     
-    -- Градиент для обводки
     local strokeGradient = Instance.new("UIGradient")
     strokeGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.border),
-        ColorSequenceKeypoint.new(0.5, __RGB(200, 150, 255)),
-        ColorSequenceKeypoint.new(1, COLORS.border)
+        ColorSequenceKeypoint.new(0, COLORS.gradient1),
+        ColorSequenceKeypoint.new(0.5, COLORS.gradient2),
+        ColorSequenceKeypoint.new(1, COLORS.gradient3)
     })
     strokeGradient.Parent = stroke
     
-    -- Вращение градиента
     RunService.RenderStepped:Connect(function()
         if strokeGradient and strokeGradient.Parent then
             strokeGradient.Rotation = (strokeGradient.Rotation + 0.3) % 360
@@ -620,7 +1781,6 @@ local function CreateResetGUIElements()
     titleCorner.CornerRadius = __UD(0, 8)
     titleCorner.Parent = titleFrame
     
-    -- Логотип
     local logo = Instance.new("TextLabel")
     logo.Size = __UD2(0.8, 0, 1, 0)
     logo.Position = __UD2(0.05, 0, 0, 0)
@@ -632,12 +1792,11 @@ local function CreateResetGUIElements()
     logo.TextXAlignment = Enum.TextXAlignment.Left
     logo.Parent = titleFrame
     
-    -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseBtn"
     closeBtn.Size = __UD2(0, 25, 0, 25)
     closeBtn.Position = __UD2(1, -30, 0, 2.5)
-    closeBtn.BackgroundColor3 = __RGB(200, 40, 40)
+    closeBtn.BackgroundColor3 = COLORS.statusOff
     closeBtn.BackgroundTransparency = 0.5
     closeBtn.BorderSizePixel = 0
     closeBtn.Font = Enum.Font.Jura
@@ -713,11 +1872,11 @@ local function CreateResetGUIElements()
     layout.Padding = UDim.new(0, 4)
     layout.Parent = scrollFrame
     
-    -- Функция создания кнопок (стиль OMNIVERSE)
+    -- Функция создания кнопок (стиль OMNIVERSE/MONOCHROME)
     local function AddButton(text, color, callback)
         local btn = Instance.new("TextButton")
         btn.Size = __UD2(0.92, 0, 0, 26)
-        btn.BackgroundColor3 = color or __RGB(30, 22, 50)
+        btn.BackgroundColor3 = color or COLORS.btnBg
         btn.BackgroundTransparency = 0.4
         btn.BorderSizePixel = 0
         btn.Font = Enum.Font.Jura
@@ -761,7 +1920,7 @@ local function CreateResetGUIElements()
         local toggle = Instance.new("TextButton")
         toggle.Size = __UD2(0.25, 0, 1, 0)
         toggle.Position = __UD2(0.75, 0, 0, 0)
-        toggle.BackgroundColor3 = __RGB(40, 30, 60)
+        toggle.BackgroundColor3 = COLORS.btnBg
         toggle.BorderSizePixel = 0
         toggle.Font = Enum.Font.Jura
         toggle.TextColor3 = __RGB(255, 255, 255)
@@ -772,7 +1931,7 @@ local function CreateResetGUIElements()
         
         local function UpdateToggle()
             toggle.Text = getState() and "✅" or "❌"
-            toggle.BackgroundColor3 = getState() and __RGB(0, 150, 50) or __RGB(150, 40, 40)
+            toggle.BackgroundColor3 = getState() and COLORS.statusActive or COLORS.statusOff
         end
         
         toggle.MouseButton1Click:Connect(function()
@@ -792,11 +1951,11 @@ local function CreateResetGUIElements()
         return container
     end
     
-    -- СЕКЦИЯ ВЫБОРА ИГРОКА (стиль OMNIVERSE)
+    -- СЕКЦИЯ ВЫБОРА ИГРОКА
     local function AddPlayerSection()
         local section = Instance.new("Frame")
         section.Size = __UD2(0.92, 0, 0, 70)
-        section.BackgroundColor3 = __RGB(30, 20, 45)
+        section.BackgroundColor3 = COLORS.bgTitle
         section.BackgroundTransparency = 0.3
         section.BorderSizePixel = 1
         section.BorderColor3 = COLORS.border
@@ -849,7 +2008,7 @@ local function CreateResetGUIElements()
                 if player ~= LocalPlayer then
                     local btn = Instance.new("TextButton")
                     btn.Size = __UD2(0, 58, 0, 40)
-                    btn.BackgroundColor3 = __RGB(40, 28, 60)
+                    btn.BackgroundColor3 = COLORS.btnBg
                     btn.BackgroundTransparency = 0.3
                     btn.BorderSizePixel = 0
                     btn.Font = Enum.Font.Jura
@@ -862,18 +2021,19 @@ local function CreateResetGUIElements()
                     Instance.new("UICorner", btn).CornerRadius = __UD(0, 4)
                     
                     if ResetState.resetSelPlr and ResetState.resetSelPlr.UserId == player.UserId then
-                        btn.BackgroundColor3 = __RGB(80, 50, 120)
+                        btn.BackgroundColor3 = COLORS.accent
                         btn.TextColor3 = __RGB(255, 255, 255)
+                        btn.BackgroundTransparency = 0.1
                     end
                     
                     btn.MouseEnter:Connect(function()
-                        if ResetState.resetSelPlr and ResetState.resetSelPlr.UserId ~= player.UserId then
+                        if not (ResetState.resetSelPlr and ResetState.resetSelPlr.UserId == player.UserId) then
                             btn.BackgroundTransparency = 0.1
                         end
                     end)
                     
                     btn.MouseLeave:Connect(function()
-                        if ResetState.resetSelPlr and ResetState.resetSelPlr.UserId ~= player.UserId then
+                        if not (ResetState.resetSelPlr and ResetState.resetSelPlr.UserId == player.UserId) then
                             btn.BackgroundTransparency = 0.3
                         end
                     end)
@@ -881,12 +2041,12 @@ local function CreateResetGUIElements()
                     btn.MouseButton1Click:Connect(function()
                         for _, child in ipairs(playersScroll:GetChildren()) do
                             if child:IsA("TextButton") then
-                                child.BackgroundColor3 = __RGB(40, 28, 60)
+                                child.BackgroundColor3 = COLORS.btnBg
                                 child.TextColor3 = COLORS.text
                                 child.BackgroundTransparency = 0.3
                             end
                         end
-                        btn.BackgroundColor3 = __RGB(80, 50, 120)
+                        btn.BackgroundColor3 = COLORS.accent
                         btn.TextColor3 = __RGB(255, 255, 255)
                         btn.BackgroundTransparency = 0.1
                         
@@ -1025,141 +2185,86 @@ end
 CreateResetGUIElements()
 
 -- ==============================================
--- BINDABLE BUTTONS (для RT)
+-- КНОПКИ НА ЭКРАНЕ (СТИЛЬ OMNIVERSE/MONOCHROME)
 -- ==============================================
-local BindableButtons = {Buttons = {}, Maids = {}, Count = 0}
+-- Aim Lock
+BindableButtons.AddBButton("aim_toggle", "Aim:OFF", function()
+    AimLockEnabled = not AimLockEnabled
+    if AimLockEnabled then TargetPlayer = FindMurderer(nil) else TargetPlayer = nil end
+    BindableButtons.UpdateBButtonText("aim_toggle", AimLockEnabled and "Aim:ON" or "Aim:OFF")
+    BindableButtons.UpdateBButtonColor("aim_toggle", AimLockEnabled, "aim")
+end)
 
-local function Bind_GetStorage()
-    local parent = gethui and gethui()
-    if not parent or typeof(parent) ~= "Instance" then parent = CoreGui end
-    if not parent or typeof(parent) ~= "Instance" then
-        parent = LocalPlayer:WaitForChild("PlayerGui", 5)
+-- Wall Check
+BindableButtons.AddBButton("wall_toggle", "Wall:OFF", function()
+    WallCheckEnabled = not WallCheckEnabled
+    BindableButtons.UpdateBButtonText("wall_toggle", WallCheckEnabled and "Wall:ON" or "Wall:OFF")
+    BindableButtons.UpdateBButtonColor("wall_toggle", WallCheckEnabled, "wall")
+end)
+
+-- Outline
+BindableButtons.AddBButton("outline_toggle", "OL:OFF", function()
+    OutlineEnabled = not OutlineEnabled
+    if OutlineEnabled then FullRefreshOutline() else for plr, _ in pairs(OutlinedPlayers) do RemoveOutline(plr) end end
+    BindableButtons.UpdateBButtonText("outline_toggle", OutlineEnabled and "OL:ON" or "OL:OFF")
+    BindableButtons.UpdateBButtonColor("outline_toggle", OutlineEnabled, "outline")
+end)
+
+-- Wallhop
+BindableButtons.AddBButton("wallhop_toggle", "WH:OFF", function()
+    WallhopState.enabled = not WallhopState.enabled
+    BindableButtons.UpdateBButtonText("wallhop_toggle", WallhopState.enabled and "WH:ON" or "WH:OFF")
+    BindableButtons.UpdateBButtonColor("wallhop_toggle", WallhopState.enabled, "wallhop")
+end)
+
+-- Bomb Jump
+BindableButtons.AddBButton("bombjump_bind", "BJ", function()
+    BombJumpState.enabled = not BombJumpState.enabled
+    if BombJumpState.enabled then
+        BombJumpState.bindButton = BindableButtons.Buttons["bombjump_bind"]
+        BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
+    else
+        BindableButtons.UpdateBButtonText("bombjump_bind", "BJ")
     end
-    if typeof(parent) ~= "Instance" then
-        parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
+end)
 
-    local sg = parent:FindFirstChild("@bindstorage")
-    if not sg then
-        sg = Instance.new("ScreenGui")
-        sg.Name = "@bindstorage"
-        sg.ResetOnSpawn = false
-        sg.IgnoreGuiInset = true
-        pcall(function() sg.ScreenInsets = Enum.ScreenInsets.None end)
-        sg.Parent = parent
-    end
-    return sg
-end
-
-function BindableButtons.AddBButton(id, text, clickFunc)
-    if BindableButtons.Buttons[id] then return end
-    
-    local buttonMaid = Maid.new()
-    local camera = Workspace.CurrentCamera
-    local screen = camera.ViewportSize
-    local buttonSizeY = 0.10
-    local widthScale = buttonSizeY * (screen.Y / screen.X)
-    local xPos = 0.06 + ((BindableButtons.Count % 8) * (widthScale + 0.008))
-    local yPos = 0.82 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
-
-    local ImageButton = Instance.new("ImageButton")
-    ImageButton.Name = id
-    ImageButton.Size = __UD2(widthScale, 0, buttonSizeY, 0)
-    ImageButton.Position = __UD2(xPos, 0, yPos, 0)
-    ImageButton.AnchorPoint = __V2(0.5, 0.5)
-    ImageButton.Image = "rbxassetid://86221076925479"
-    ImageButton.BackgroundTransparency = 1
-    ImageButton.BorderSizePixel = 0
-    ImageButton.ClipsDescendants = false
-    ImageButton.AutoButtonColor = false
-    ImageButton.Parent = Bind_GetStorage()
-    buttonMaid:GiveTask(ImageButton)
-
-    local TextLabel = Instance.new("TextLabel", ImageButton)
-    TextLabel.Name = "@Text"
-    TextLabel.Size = __UD2(0.8, 0, 0.8, 0)
-    TextLabel.Position = __UD2(0.5, 0, 0.5, 0)
-    TextLabel.AnchorPoint = __V2(0.5, 0.5)
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.Font = Enum.Font.Jura
-    TextLabel.Text = text
-    TextLabel.TextColor3 = __RGB(255, 255, 255)
-    TextLabel.TextSize = math.floor(buttonSizeY * 90)
-    TextLabel.TextWrapped = true
-    TextLabel.ZIndex = 3
-
-    local Aspect = Instance.new("UIAspectRatioConstraint", ImageButton)
-    Aspect.AspectRatio = 1
-    Aspect.AspectType = Enum.AspectType.ScaleWithParentSize
-
-    local Stroke = Instance.new("UIGradient", ImageButton)
-    Stroke.Name = "@Stroke"
-    Stroke.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, __RGB(200, 80, 180)),
-        ColorSequenceKeypoint.new(0.5, __RGB(150, 110, 255)),
-        ColorSequenceKeypoint.new(1, __RGB(200, 80, 180))
-    })
-
-    local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://3868133279"
-    sound.Volume = 0.5
-    sound.Parent = ImageButton
-
-    buttonMaid:GiveTask(ImageButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            sound:Play()
-            bind_safecallback(clickFunc)
-        end
-    end))
-
-    buttonMaid:GiveTask(RunService.RenderStepped:Connect(function()
-        Stroke.Rotation = (Stroke.Rotation + 1) % 360
-    end))
-
-    BindableButtons.Buttons[id] = ImageButton
-    BindableButtons.Maids[id] = buttonMaid
-    BindableButtons.Count = BindableButtons.Count + 1
-    return ImageButton
-end
-
-function BindableButtons.DeleteBButton(id)
-    if BindableButtons.Maids[id] then
-        BindableButtons.Maids[id]:Destroy()
-        BindableButtons.Maids[id] = nil
-        BindableButtons.Buttons[id] = nil
-    end
-end
-
-function bind_safecallback(callback)
-    if not callback then return end
-    local ok, err = xpcall(callback, function(e) return debug.traceback(e) end)
-    if not ok then warn("[BIND ERROR] " .. tostring(err)) end
-end
-
--- ==============================================
--- КНОПКА RT НА ЭКРАНЕ
--- ==============================================
-local function ToggleResetGUI()
+-- RT
+BindableButtons.AddBButton("rt_toggle", "RT", function()
     ResetState.resetGuiOpen = not ResetState.resetGuiOpen
     ResetGUI.Enabled = ResetState.resetGuiOpen
-    print("🔄 RT GUI: " .. (ResetState.resetGuiOpen and "OPEN" or "CLOSED"))
-end
-
--- Создаём кнопку RT
-BindableButtons.AddBButton("rt_toggle", "RT", ToggleResetGUI)
+end)
 
 -- ==============================================
--- ГОРЯЧАЯ КЛАВИША R
+-- ФУНКЦИЯ СМЕНЫ СТИЛЯ
+-- ==============================================
+local function SetGUIStyle(styleName)
+    if GUI_STYLES[styleName] then
+        CurrentStyle = styleName
+        if ResetGUI then
+            -- Пересоздаём GUI
+            for _, child in ipairs(ResetGUI:GetChildren()) do
+                child:Destroy()
+            end
+            CreateResetGUIElements()
+        end
+        print("🎨 GUI Style: " .. styleName)
+    end
+end
+
+-- ==============================================
+-- ГОРЯЧИЕ КЛАВИШИ
 -- ==============================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
+    
     if input.KeyCode == Enum.KeyCode.R then
-        ToggleResetGUI()
+        ResetState.resetGuiOpen = not ResetState.resetGuiOpen
+        ResetGUI.Enabled = ResetState.resetGuiOpen
     end
 end)
 
 -- ==============================================
--- NO CLIP LOOP (если включен)
+-- NO CLIP LOOP
 -- ==============================================
 local noclipSteppedConn = RunService.Stepped:Connect(function()
     if not ResetState.noclipEnabled then return end
@@ -1174,20 +2279,45 @@ end)
 RootMaid:GiveTask(noclipSteppedConn)
 
 -- ==============================================
+-- ЦИКЛ AIMLOCK
+-- ==============================================
+RunService:BindToRenderStep("MM2_AimLock", Enum.RenderPriority.Camera.Value + 1, AimLockLoop)
+RunService.Heartbeat:Connect(OutlineUpdateLoop)
+
+-- ==============================================
 -- ОЧИСТКА
 -- ==============================================
 RootMaid:GiveTask(function()
-    BindableButtons.DeleteBButton("rt_toggle")
+    RunService:UnbindFromRenderStep("MM2_AimLock")
+    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle", "wallhop_toggle", "bombjump_bind", "rt_toggle"}) do
+        BindableButtons.DeleteBButton(id)
+    end
     if ResetGUI then ResetGUI:Destroy() end
 end)
 
+-- ==============================================
+-- ВЫВОД МЕНЮ
+-- ==============================================
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🔄 RT SYSTEM v3.5 (OMNIVERSE STYLE)")
+print("⚡ MM2 ULTIMATE PACKAGE v2.6")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🎨 СТИЛЬ: OMNIVERSE ULTIMATE")
-print("🎯 ВЫБОР ИГРОКА: КНОПКИ")
-print("🔄 СБРОС: SHERIFF / MURDERER / ALL")
+print("🎨 СТИЛИ GUI:")
+print("  • OMNIVERSE (фиолетовый)")
+print("  • MONOCHROME (чёрно-белый)")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("⌨️ [R] - Open/Close RT GUI")
-print("📌 КНОПКА 'RT' на экране")
+print("🎯 ФУНКЦИИ:")
+print("  🎯 Aim Lock    - Автонаведение")
+print("  🧱 Wall Check  - Проверка видимости")
+print("  👁️ Outline     - Подсветка игроков")
+print("  🧱 Wallhop     - Флинг у стен")
+print("  💣 Bomb Jump   - Прыжок с бомбой")
+print("  🔄 RT System   - Сброс игроков")
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
+print("  [R] - Open/Close RT GUI")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("🔧 Type 'SetGUIStyle(\"MONOCHROME\")' for black/white")
+print("🔧 Type 'SetGUIStyle(\"OMNIVERSE\")' for purple")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+_G.SetGUIStyle = SetGUIStyle
