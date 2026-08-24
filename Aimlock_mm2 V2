@@ -1930,7 +1930,7 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ (ИСПРАВЛЕННАЯ)
+-- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ
 -- ==============================================
 local function MakeResetGuiDraggable(frame)
     local dragging = false
@@ -1938,7 +1938,6 @@ local function MakeResetGuiDraggable(frame)
     local startPos = nil
     local parentSize = nil
     
-    -- Получаем размер родителя один раз
     local function updateParentSize()
         if frame and frame.Parent then
             parentSize = frame.Parent.AbsoluteSize
@@ -1977,25 +1976,23 @@ local function MakeResetGuiDraggable(frame)
         end
     end)
     
-    -- Обновляем размер при изменении окна
     frame.AncestryChanged:Connect(function()
         updateParentSize()
     end)
     
-    -- Инициализация
     task.wait(0.1)
     updateParentSize()
 end
 
 -- ==============================================
--- СОЗДАНИЕ GUI ДЛЯ RESET
+-- СОЗДАНИЕ GUI ДЛЯ RESET (УМЕНЬШЕННЫЙ)
 -- ==============================================
 local function CreateResetGUIElements()
-    -- Главный фрейм
+    -- Главный фрейм (уменьшенный)
     local frame = Instance.new("Frame")
     frame.Name = "ResetMainFrame"
-    frame.Size = __UD2(0, 320, 0, 460)
-    frame.Position = __UD2(0.5, -160, 0.9, -230)
+    frame.Size = __UD2(0, 280, 0, 380) -- Уменьшен с 320x460 до 280x380
+    frame.Position = __UD2(0.5, -140, 0.9, -190)
     frame.AnchorPoint = __V2(0.5, 0.5)
     frame.BackgroundColor3 = __RGB(20, 20, 30)
     frame.BackgroundTransparency = 0.05
@@ -2006,10 +2003,10 @@ local function CreateResetGUIElements()
     
     Instance.new("UICorner", frame).CornerRadius = __UD(0, 8)
     
-    -- Заголовок
+    -- Заголовок (уменьшенный)
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
-    titleBar.Size = __UD2(1, 0, 0, 35)
+    titleBar.Size = __UD2(1, 0, 0, 30)
     titleBar.Position = __UD2(0, 0, 0, 0)
     titleBar.BackgroundColor3 = __RGB(40, 0, 50)
     titleBar.BackgroundTransparency = 0.3
@@ -2017,27 +2014,27 @@ local function CreateResetGUIElements()
     titleBar.Parent = frame
     
     local title = Instance.new("TextLabel")
-    title.Size = __UD2(1, -40, 1, 0)
+    title.Size = __UD2(1, -35, 1, 0)
     title.Position = __UD2(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.Jura
-    title.Text = "🔄 RT SYSTEM v3.5"
+    title.Text = "🔄 RT SYSTEM"
     title.TextColor3 = __RGB(255, 100, 100)
-    title.TextSize = 18
+    title.TextSize = 15
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = titleBar
     
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseBtn"
-    closeBtn.Size = __UD2(0, 30, 0, 30)
-    closeBtn.Position = __UD2(1, -35, 0, 2.5)
+    closeBtn.Size = __UD2(0, 25, 0, 25)
+    closeBtn.Position = __UD2(1, -30, 0, 2.5)
     closeBtn.BackgroundColor3 = __RGB(200, 0, 0)
     closeBtn.BackgroundTransparency = 0.5
     closeBtn.BorderSizePixel = 0
     closeBtn.Font = Enum.Font.Jura
     closeBtn.Text = "✕"
     closeBtn.TextColor3 = __RGB(255, 255, 255)
-    closeBtn.TextSize = 18
+    closeBtn.TextSize = 14
     closeBtn.Parent = titleBar
     
     Instance.new("UICorner", closeBtn).CornerRadius = __UD(0, 4)
@@ -2050,15 +2047,15 @@ local function CreateResetGUIElements()
     -- Делаем GUI перетаскиваемым
     MakeResetGuiDraggable(frame)
     
-    -- Скроллинг фрейм
+    -- Скроллинг фрейм (уменьшенный)
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "ScrollFrame"
-    scrollFrame.Size = __UD2(1, -10, 1, -45)
-    scrollFrame.Position = __UD2(0, 5, 0, 40)
+    scrollFrame.Size = __UD2(1, -8, 1, -38)
+    scrollFrame.Position = __UD2(0, 4, 0, 34)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.CanvasSize = __UD2(0, 0, 0, 0)
-    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.ScrollBarThickness = 3
     scrollFrame.ScrollBarImageColor3 = __RGB(100, 50, 150)
     scrollFrame.Parent = frame
     
@@ -2066,23 +2063,23 @@ local function CreateResetGUIElements()
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 5)
+    layout.Padding = UDim.new(0, 4) -- Уменьшен отступ
     layout.Parent = scrollFrame
     
-    -- Функции создания элементов
+    -- Функции создания элементов (уменьшенные)
     local function AddButton(text, color, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = __UD2(0.92, 0, 0, 32)
+        btn.Size = __UD2(0.92, 0, 0, 26) -- Уменьшен с 32 до 26
         btn.BackgroundColor3 = color or __RGB(30, 30, 50)
         btn.BackgroundTransparency = 0.3
         btn.BorderSizePixel = 0
         btn.Font = Enum.Font.Jura
         btn.Text = text
         btn.TextColor3 = __RGB(255, 255, 255)
-        btn.TextSize = 13
+        btn.TextSize = 11 -- Уменьшен с 13 до 11
         btn.Parent = scrollFrame
         
-        Instance.new("UICorner", btn).CornerRadius = __UD(0, 5)
+        Instance.new("UICorner", btn).CornerRadius = __UD(0, 4)
         
         btn.MouseButton1Click:Connect(callback)
         return btn
@@ -2090,7 +2087,7 @@ local function CreateResetGUIElements()
     
     local function AddToggle(text, getState, setState)
         local container = Instance.new("Frame")
-        container.Size = __UD2(0.92, 0, 0, 32)
+        container.Size = __UD2(0.92, 0, 0, 26) -- Уменьшен с 32 до 26
         container.BackgroundTransparency = 1
         container.Parent = scrollFrame
         
@@ -2101,7 +2098,7 @@ local function CreateResetGUIElements()
         label.Font = Enum.Font.Jura
         label.Text = text
         label.TextColor3 = __RGB(200, 200, 200)
-        label.TextSize = 13
+        label.TextSize = 11 -- Уменьшен с 13 до 11
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
@@ -2112,13 +2109,13 @@ local function CreateResetGUIElements()
         toggle.BorderSizePixel = 0
         toggle.Font = Enum.Font.Jura
         toggle.TextColor3 = __RGB(255, 255, 255)
-        toggle.TextSize = 11
+        toggle.TextSize = 10 -- Уменьшен с 11 до 10
         toggle.Parent = container
         
-        Instance.new("UICorner", toggle).CornerRadius = __UD(0, 5)
+        Instance.new("UICorner", toggle).CornerRadius = __UD(0, 4)
         
         local function UpdateToggle()
-            toggle.Text = getState() and "✅ ON" or "❌ OFF"
+            toggle.Text = getState() and "✅" or "❌"
             toggle.BackgroundColor3 = getState() and __RGB(0, 150, 0) or __RGB(150, 0, 0)
         end
         
@@ -2131,41 +2128,41 @@ local function CreateResetGUIElements()
         return container
     end
     
-    -- Выбор игрока
+    -- Выбор игрока (уменьшенный)
     local function AddPlayerSelector()
         local container = Instance.new("Frame")
-        container.Size = __UD2(0.92, 0, 0, 40)
+        container.Size = __UD2(0.92, 0, 0, 34) -- Уменьшен с 40 до 34
         container.BackgroundTransparency = 1
         container.Parent = scrollFrame
         
         local label = Instance.new("TextLabel")
-        label.Size = __UD2(1, 0, 0, 18)
+        label.Size = __UD2(1, 0, 0, 14)
         label.Position = __UD2(0, 0, 0, 0)
         label.BackgroundTransparency = 1
         label.Font = Enum.Font.Jura
-        label.Text = "🎯 Select Player to Reset"
+        label.Text = "🎯 Select Player"
         label.TextColor3 = __RGB(200, 200, 200)
-        label.TextSize = 12
+        label.TextSize = 10
         label.TextXAlignment = Enum.TextXAlignment.Center
         label.Parent = container
         
         local dropdown = Instance.new("TextButton")
-        dropdown.Size = __UD2(1, 0, 0, 20)
-        dropdown.Position = __UD2(0, 0, 0, 18)
+        dropdown.Size = __UD2(1, 0, 0, 18)
+        dropdown.Position = __UD2(0, 0, 0, 14)
         dropdown.BackgroundColor3 = __RGB(30, 30, 50)
         dropdown.BackgroundTransparency = 0.3
         dropdown.BorderSizePixel = 0
         dropdown.Font = Enum.Font.Jura
         dropdown.Text = "Select Player..."
         dropdown.TextColor3 = __RGB(200, 200, 200)
-        dropdown.TextSize = 12
+        dropdown.TextSize = 10
         dropdown.Parent = container
         
-        Instance.new("UICorner", dropdown).CornerRadius = __UD(0, 4)
+        Instance.new("UICorner", dropdown).CornerRadius = __UD(0, 3)
         
         local listFrame = Instance.new("Frame")
-        listFrame.Size = __UD2(1, 0, 0, 100)
-        listFrame.Position = __UD2(0, 0, 0, 40)
+        listFrame.Size = __UD2(1, 0, 0, 80)
+        listFrame.Position = __UD2(0, 0, 0, 34)
         listFrame.BackgroundColor3 = __RGB(20, 20, 30)
         listFrame.BackgroundTransparency = 0.1
         listFrame.BorderSizePixel = 1
@@ -2174,7 +2171,7 @@ local function CreateResetGUIElements()
         listFrame.ZIndex = 10
         listFrame.Parent = container
         
-        Instance.new("UICorner", listFrame).CornerRadius = __UD(0, 4)
+        Instance.new("UICorner", listFrame).CornerRadius = __UD(0, 3)
         
         local listLayout = Instance.new("UIListLayout")
         listLayout.FillDirection = Enum.FillDirection.Vertical
@@ -2190,14 +2187,14 @@ local function CreateResetGUIElements()
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
                     local btn = Instance.new("TextButton")
-                    btn.Size = __UD2(1, 0, 0, 25)
+                    btn.Size = __UD2(1, 0, 0, 20)
                     btn.BackgroundColor3 = __RGB(30, 30, 50)
                     btn.BackgroundTransparency = 0.3
                     btn.BorderSizePixel = 0
                     btn.Font = Enum.Font.Jura
                     btn.Text = player.Name
                     btn.TextColor3 = __RGB(200, 200, 200)
-                    btn.TextSize = 12
+                    btn.TextSize = 10
                     btn.Parent = listFrame
                     
                     Instance.new("UICorner", btn).CornerRadius = __UD(0, 2)
@@ -2206,7 +2203,7 @@ local function CreateResetGUIElements()
                         dropdown.Text = player.Name
                         listFrame.Visible = false
                         ResetState.resetSelPlr = player
-                        Reset_Notify("Selected", player.Name .. " for reset", 2)
+                        Reset_Notify("Selected", player.Name, 2)
                     end)
                 end
             end
@@ -2222,8 +2219,8 @@ local function CreateResetGUIElements()
                         table.insert(children, child)
                     end
                 end
-                local height = #children * 26
-                listFrame.Size = __UD2(1, 0, 0, math.min(height, 150))
+                local height = #children * 21
+                listFrame.Size = __UD2(1, 0, 0, math.min(height, 120))
             end
         end)
         
@@ -2232,16 +2229,14 @@ local function CreateResetGUIElements()
     
     -- === СОЗДАНИЕ ЭЛЕМЕНТОВ ===
     
-    AddButton("🔄 Check My Role", __RGB(40, 40, 80), function()
+    AddButton("🔄 Check Role", __RGB(40, 40, 80), function()
         local role = Reset_getMyRole()
-        Reset_Notify("Your Role", role or "Innocent / No Role", 4)
+        Reset_Notify("Your Role", role or "Innocent", 3)
     end)
     
-    -- Выбор игрока
     AddPlayerSelector()
     
-    -- Кнопка сброса выбранного
-    AddButton("🔄 Reset Selected Player", __RGB(80, 40, 40), function()
+    AddButton("🔄 Reset Selected", __RGB(80, 40, 40), function()
         if ResetState.resetSelPlr then
             if Reset_isWhitelisted(ResetState.resetSelPlr) then
                 Reset_Notify("Whitelist", ResetState.resetSelPlr.Name .. " is whitelisted!", 3)
@@ -2337,7 +2332,7 @@ local function CreateResetGUIElements()
     
     -- Обновление CanvasSize
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scrollFrame.CanvasSize = __UD2(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+        scrollFrame.CanvasSize = __UD2(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
     end)
 end
 
