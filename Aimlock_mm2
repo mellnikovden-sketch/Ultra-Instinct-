@@ -1,0 +1,1095 @@
+-- MM2 Murderer Aim Lock V2.6 + OUTLINE (Sheriff/Murderer/Innocent)
+-- FIXED: Автообновление после раунда
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- ==============================================
+-- СОЗДАНИЕ ГЛАВНОГО GUI
+-- ==============================================
+local function CreateMainGUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "MM2_AimLock_GUI"
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    local parent = CoreGui
+    pcall(function()
+        parent = gethui and gethui() or CoreGui
+    end)
+    gui.Parent = parent
+    return gui
+end
+
+local MainGUI = CreateMainGUI()
+
+-- ==============================================
+-- MAID
+-- ==============================================
+local Maid = {}
+Maid.__index = Maid
+
+function Maid.new()
+    return setmetatable({_tasks = {}, _destroyed = false}, Maid)
+end
+
+function Maid:GiveTask(task)
+    if self._destroyed then self:_cleanupTask(task) return end
+    table.insert(self._tasks, task)
+    return task
+end
+
+function Maid:GiveTasks(...)
+    for _, t in ipairs({...}) do self:GiveTask(t) end
+end
+
+function Maid:_cleanupTask(task)
+    local t = typeof(task)
+    if t == "RBXScriptConnection" then task:Disconnect()
+    elseif t == "Instance" then task:Destroy()
+    elseif t == "function" then task()
+    elseif t == "table" and type(task.Destroy) == "function" then task:Destroy()
+    end
+end
+
+function Maid:DoCleaning()
+    if self._destroyed then return end
+    self._destroyed = true
+    for _, task in ipairs(self._tasks) do self:_cleanupTask(task) end
+    self._tasks = {}
+end
+
+function Maid:Destroy() self:DoCleaning() end
+
+local RootMaid = Maid.new()
+
+-- ==============================================
+-- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+-- ==============================================
+local function getfserv(s)
+    local ok, svc = pcall(function() return game:GetService(s) end)
+    if ok and svc then return svc end
+    ok, svc = pcall(function() return game:FindService(s) end)
+    if ok and svc then return svc end
+    return game[s]
+end
+
+local __RS   = getfserv("RunService")
+local __UIS  = getfserv("UserInputService")
+local __PLRS = getfserv("Players")
+local __TS   = getfserv("TweenService")
+
+local __UD2 = UDim2.new
+local __UD  = UDim.new
+local __V2  = Vector2.new
+local __PCLR = Color3.new
+local __RGB  = Color3.fromRGB
+
+-- ==============================================
+-- BINDABLE BUTTONS
+-- ==============================================
+local BindableButtons = {Buttons = {}, Maids = {}, Count = 0}
+
+local __SHAPES = {
+    [0] = "rbxassetid://86221076925479",
+    [1] = "rbxassetid://96242665417546",
+    [2] = "rbxassetid://97129189935336",
+    [3] = "rbxassetid://76165862027868",
+    [4] = "rbxassetid://125868092127496"
+}
+
+local __NORMAL_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.133333, 0.827451, 0.494118)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.231373, 0.509804, 0.498039)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.501961, 0.501961, 0.501961))
+})
+
+local __ACTIVE_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.0, 0.8, 0.4)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.0, 0.5, 0.3)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.2, 0.8, 0.6))
+})
+
+local __WALL_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(0.0, 0.4, 0.8)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.0, 0.3, 0.6)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.2, 0.5, 0.8))
+})
+
+local __OUTLINE_COLOR = ColorSequence.new({
+    ColorSequenceKeypoint.new(0,   __PCLR(1.0, 0.0, 0.0)),
+    ColorSequenceKeypoint.new(0.6, __PCLR(0.8, 0.0, 0.2)),
+    ColorSequenceKeypoint.new(1,   __PCLR(0.6, 0.0, 0.3))
+})
+
+local muteButtonSounds = false
+
+local function bind_safecallback(callback)
+    if not callback then return end
+    local ok, err = xpcall(callback, function(e) return debug.traceback(e) end)
+    if not ok then warn("[BIND ERROR] " .. tostring(err)) end
+end
+
+local function Bind_GetStorage()
+    local parent = gethui and gethui()
+    if not parent or typeof(parent) ~= "Instance" then parent = CoreGui end
+    if not parent or typeof(parent) ~= "Instance" then
+        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui", 5)
+    end
+    if typeof(parent) ~= "Instance" then
+        parent = __PLRS.LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    local sg = parent:FindFirstChild("@bindstorage")
+    if not sg then
+        sg = Instance.new("ScreenGui")
+        sg.Name = "@bindstorage"
+        sg.ResetOnSpawn = false
+        sg.IgnoreGuiInset = true
+        pcall(function() sg.ScreenInsets = Enum.ScreenInsets.None end)
+        sg.Parent = parent
+    end
+    return sg
+end
+
+local function Bind_MakeDraggable(gui, maid, ripple, sound, clickFunc)
+    local dragging, dragInput, dragStart, startPos
+    local hasMoved = false
+    
+    maid:GiveTask(gui.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging, dragStart, startPos = true, input.Position, gui.Position
+            hasMoved = false
+            sound:Play()
+            local absPos = gui.AbsolutePosition
+            ripple.Position = __UD2(0, input.Position.X - absPos.X, 0, input.Position.Y - absPos.Y)
+            ripple.Size = __UD2(0, 0, 0, 0)
+            ripple.BackgroundTransparency = 0.5
+            ripple.Visible = true
+            __TS:Create(ripple, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                Size = __UD2(0, 45, 0, 45),
+                BackgroundTransparency = 1
+            }):Play()
+
+            local rel
+            rel = __UIS.InputEnded:Connect(function(endInput)
+                if endInput.UserInputType == input.UserInputType then
+                    dragging = false
+                    if not hasMoved then
+                        bind_safecallback(clickFunc)
+                    end
+                    rel:Disconnect()
+                end
+            end)
+        end
+    end))
+    
+    maid:GiveTask(gui.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end))
+    
+    maid:GiveTask(__UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            if delta.Magnitude > 7 then hasMoved = true end
+            local screen = gui.Parent.AbsoluteSize
+            gui.Position = __UD2(startPos.X.Scale + (delta.X / screen.X), 0, startPos.Y.Scale + (delta.Y / screen.Y), 0)
+        end
+    end))
+end
+
+function BindableButtons.AddBButton(id, text, clickFunc, isGold, colorType)
+    if BindableButtons.Buttons[id] then return end
+    
+    local buttonMaid = Maid.new()
+    local camera = workspace.CurrentCamera
+    local screen = camera.ViewportSize
+    local buttonSizeY = 0.10
+    local widthScale = buttonSizeY * (screen.Y / screen.X)
+    local xPos = 0.06 + ((BindableButtons.Count % 8) * (widthScale + 0.008))
+    local yPos = 0.82 - (math.floor(BindableButtons.Count / 8) * (buttonSizeY + 0.015))
+
+    local ImageButton = Instance.new("ImageButton")
+    ImageButton.Name = id
+    ImageButton.Size = __UD2(widthScale, 0, buttonSizeY, 0)
+    ImageButton.Position = __UD2(xPos, 0, yPos, 0)
+    ImageButton.AnchorPoint = __V2(0.5, 0.5)
+    ImageButton.Image = __SHAPES[0]
+    ImageButton.BackgroundTransparency = 1
+    ImageButton.BorderSizePixel = 0
+    ImageButton.ClipsDescendants = false
+    ImageButton.AutoButtonColor = false
+    ImageButton.Parent = Bind_GetStorage()
+    buttonMaid:GiveTask(ImageButton)
+
+    local TextLabel = Instance.new("TextLabel", ImageButton)
+    TextLabel.Name = "@Text"
+    TextLabel.Size = __UD2(0.8, 0, 0.8, 0)
+    TextLabel.Position = __UD2(0.5, 0, 0.5, 0)
+    TextLabel.AnchorPoint = __V2(0.5, 0.5)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Font = Enum.Font.Jura
+    TextLabel.Text = text
+    TextLabel.TextColor3 = __PCLR(1, 1, 1)
+    TextLabel.TextSize = 8
+    TextLabel.TextWrapped = true
+    TextLabel.ZIndex = 3
+
+    local Aspect = Instance.new("UIAspectRatioConstraint", ImageButton)
+    Aspect.AspectRatio = 1
+    Aspect.AspectType = Enum.AspectType.ScaleWithParentSize
+
+    local Stroke = Instance.new("UIGradient", ImageButton)
+    Stroke.Name = "@Stroke"
+    if colorType == "wall" then
+        Stroke.Color = __WALL_COLOR
+    elseif colorType == "outline" then
+        Stroke.Color = __OUTLINE_COLOR
+    else
+        Stroke.Color = __NORMAL_COLOR
+    end
+
+    local ripple = Instance.new("Frame")
+    ripple.Name = "@ripple"
+    ripple.BackgroundColor3 = __RGB(0, 155, 255)
+    ripple.BackgroundTransparency = 0.5
+    ripple.Size = __UD2(0, 0, 0, 0)
+    ripple.AnchorPoint = __V2(0.5, 0.5)
+    ripple.Visible = false
+    ripple.ZIndex = 2
+    ripple.Parent = ImageButton
+    Instance.new("UICorner", ripple).CornerRadius = __UD(1, 0)
+
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://3868133279"
+    sound.Volume = muteButtonSounds and 0 or 0.5
+    sound.Parent = ImageButton
+
+    Bind_MakeDraggable(ImageButton, buttonMaid, ripple, sound, clickFunc)
+    buttonMaid:GiveTask(__RS.RenderStepped:Connect(function()
+        Stroke.Rotation = (Stroke.Rotation + 1) % 360
+    end))
+
+    BindableButtons.Buttons[id] = ImageButton
+    BindableButtons.Maids[id] = buttonMaid
+    BindableButtons.Count = BindableButtons.Count + 1
+    return ImageButton
+end
+
+function BindableButtons.DeleteBButton(id)
+    if BindableButtons.Maids[id] then
+        BindableButtons.Maids[id]:Destroy()
+        BindableButtons.Maids[id] = nil
+        BindableButtons.Buttons[id] = nil
+    end
+end
+
+function BindableButtons.UpdateBButtonText(id, text)
+    local btn = BindableButtons.Buttons[id]
+    if not btn then return end
+    
+    local textLabel = btn:FindFirstChild("@Text")
+    if textLabel then
+        textLabel.Text = text
+    end
+end
+
+function BindableButtons.UpdateBButtonColor(id, isActive, colorType)
+    local btn = BindableButtons.Buttons[id]
+    if not btn then return end
+    
+    local stroke = btn:FindFirstChild("@Stroke")
+    if stroke then
+        if isActive then
+            stroke.Color = __ACTIVE_COLOR
+        else
+            if colorType == "wall" then
+                stroke.Color = __WALL_COLOR
+            elseif colorType == "outline" then
+                stroke.Color = __OUTLINE_COLOR
+            else
+                stroke.Color = __NORMAL_COLOR
+            end
+        end
+    end
+end
+
+-- ==============================================
+-- НАСТРОЙКИ
+-- ==============================================
+local AimLockEnabled = false
+local TargetPart = "HumanoidRootPart"
+local TargetPlayer = nil
+local WallCheckEnabled = false
+local OutlineEnabled = false
+local ShowBindableButton = true
+local bindButtonSize = 0.10
+local PredictionLevel = 0.2
+
+local LastSearchTime = 0
+local LastWallCheckTime = 0
+local IsTargetVisibleCache = false
+local WALL_CHECK_INTERVAL = 0.15 
+
+local InvisibleTimer = 0
+local MAX_INVISIBLE_TIME = 0.5
+
+-- ==============================================
+-- ОПРЕДЕЛЕНИЕ РОЛЕЙ
+-- ==============================================
+local function FindMurdererWeapon(character)
+    if not character then return false end
+    
+    local murdererWeapons = {
+        "knife", "blade", "dagger", "saw", "slasher", "axe", 
+        "scythe", "peppermint", "cookie", "edge", "batwing", 
+        "icewing", "bone", "hallow", "vampire", "cutter", "candy"
+    }
+    
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Tool") then
+            local name = item.Name:lower()
+            
+            for _, wName in ipairs(murdererWeapons) do
+                if name:find(wName) or wName:find(name) then
+                    return true
+                end
+            end
+            
+            if item:FindFirstChild("KnifeServer") or item:FindFirstChild("KnifeClient") then
+                return true
+            end
+            
+            if item.ToolTip and string.lower(item.ToolTip):find("knife") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function FindSheriffWeapon(character)
+    if not character then return false end
+    
+    local sheriffWeapons = {
+        "gun", "pistol", "revolver", "shooter", "blaster", "glock"
+    }
+    
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Tool") then
+            local name = item.Name:lower()
+            
+            for _, wName in ipairs(sheriffWeapons) do
+                if name:find(wName) or wName:find(name) then
+                    return true
+                end
+            end
+            
+            if item:FindFirstChild("GunServer") or item:FindFirstChild("GunClient") then
+                return true
+            end
+            
+            if item.ToolTip and string.lower(item.ToolTip):find("gun") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function GetPlayerRole(plr)
+    if not plr or plr == LocalPlayer then return nil end
+    if not plr.Character then return "Unknown" end
+    
+    local humanoid = plr.Character:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return "Dead" end
+    
+    -- Проверяем атрибуты
+    local murdererAttr = plr:GetAttribute("Murderer")
+    local sheriffAttr = plr:GetAttribute("Sheriff")
+    local roleAttr = plr:GetAttribute("Role")
+    
+    if murdererAttr == true or murdererAttr == "True" then
+        return "Murderer"
+    end
+    if sheriffAttr == true or sheriffAttr == "True" then
+        return "Sheriff"
+    end
+    if roleAttr == "Murderer" or roleAttr == "Murder" or roleAttr == "Killer" then
+        return "Murderer"
+    end
+    if roleAttr == "Sheriff" or roleAttr == "Cop" then
+        return "Sheriff"
+    end
+    
+    -- Проверяем оружие в руках
+    if FindMurdererWeapon(plr.Character) then
+        return "Murderer"
+    end
+    
+    if FindSheriffWeapon(plr.Character) then
+        return "Sheriff"
+    end
+    
+    -- Проверяем рюкзак
+    local backpack = plr:FindFirstChild("Backpack")
+    if backpack then
+        if FindMurdererWeapon(backpack) then
+            return "Murderer"
+        end
+        if FindSheriffWeapon(backpack) then
+            return "Sheriff"
+        end
+    end
+    
+    return "Innocent"
+end
+
+-- ==============================================
+-- ФУНКЦИЯ ПРОВЕРКИ ВИДИМОСТИ (WALLCHECK)
+-- ==============================================
+function IsPlayerVisible(plr)
+    if not plr or not plr.Character then return false end
+    
+    local targetPart = plr.Character:FindFirstChild(TargetPart)
+    if not targetPart then return false end
+    
+    local CurrentCamera = workspace.CurrentCamera
+    if not CurrentCamera then return false end
+    
+    local raycastParams = RaycastParams.new()
+    local filterList = {}
+    
+    if LocalPlayer.Character then 
+        table.insert(filterList, LocalPlayer.Character) 
+    end
+    
+    raycastParams.FilterDescendantsInstances = filterList
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local origin = CurrentCamera.CFrame.Position
+    local direction = targetPart.Position - origin
+    local result = workspace:Raycast(origin, direction, raycastParams)
+    
+    if not result then return true end
+    return result.Instance:IsDescendantOf(plr.Character)
+end
+
+-- ==============================================
+-- ПОИСК УБИЙЦЫ С УЧЁТОМ WALLCHECK
+-- ==============================================
+function FindMurderer(preferTarget)
+    if preferTarget and preferTarget.Character then
+        local hum = preferTarget.Character:FindFirstChild("Humanoid")
+        if hum and hum.Health > 0 then
+            if GetPlayerRole(preferTarget) == "Murderer" then
+                if not WallCheckEnabled or IsPlayerVisible(preferTarget) then
+                    return preferTarget
+                end
+            end
+        end
+    end
+
+    local bestTarget = nil
+    local bestDist = math.huge
+    
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer and pl.Character then
+            local role = GetPlayerRole(pl)
+            if role == "Murderer" then
+                local hum = pl.Character:FindFirstChild("Humanoid")
+                if hum and hum.Health > 0 then
+                    if WallCheckEnabled and not IsPlayerVisible(pl) then
+                        continue
+                    end
+                    
+                    local root = pl.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot then
+                            local dist = (root.Position - myRoot.Position).Magnitude
+                            if dist < bestDist then
+                                bestDist = dist
+                                bestTarget = pl
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return bestTarget
+end
+
+-- ==============================================
+-- OUTLINE СИСТЕМА С АВТООБНОВЛЕНИЕМ
+-- ==============================================
+local OutlinedPlayers = {}
+local OutlineMaid = Maid.new()
+local OutlineUpdateRate = 0.15
+local LastOutlineUpdate = 0
+
+-- Отслеживание подключений к CharacterAdded для каждого игрока
+local PlayerConnections = {}
+
+local function GetOutlineColor(role, isDead)
+    if isDead then
+        return Color3.fromRGB(128, 128, 128)
+    end
+    
+    if role == "Murderer" then
+        return Color3.fromRGB(255, 0, 0)
+    elseif role == "Sheriff" then
+        return Color3.fromRGB(0, 150, 255)
+    elseif role == "Innocent" then
+        return Color3.fromRGB(0, 255, 0)
+    else
+        return Color3.fromRGB(255, 255, 255)
+    end
+end
+
+local function GetRoleEmoji(role)
+    if role == "Murderer" then
+        return "🔪"
+    elseif role == "Sheriff" then
+        return "🔫"
+    elseif role == "Innocent" then
+        return "👤"
+    else
+        return "❓"
+    end
+end
+
+local function IsPlayerInGame(plr)
+    if not plr or not plr.Character then return false end
+    
+    local humanoid = plr.Character:FindFirstChild("Humanoid")
+    if not humanoid then return false end
+    if humanoid.Health <= 0 then return false end
+    
+    return true
+end
+
+local function ApplyOutline(plr)
+    if not plr or plr == LocalPlayer then return end
+    if OutlinedPlayers[plr] then return end
+    if not plr.Character then return end
+    
+    local role = GetPlayerRole(plr)
+    local isDead = (role == "Dead" or role == "Unknown" or role == nil)
+    local inGame = IsPlayerInGame(plr)
+    
+    -- Если игрок мёртв или не в игре - не показываем Outline
+    if isDead or not inGame then
+        return
+    end
+    
+    local color = GetOutlineColor(role, false)
+    
+    -- Создаём Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Outline_Highlight"
+    highlight.FillTransparency = 1
+    highlight.OutlineTransparency = 0.2
+    highlight.OutlineColor = color
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee = plr.Character
+    highlight.Parent = plr.Character
+    
+    -- Billboard с именем и ролью
+    local head = plr.Character:FindFirstChild("Head")
+    local billboard = nil
+    local nameLabel = nil
+    
+    if head then
+        billboard = Instance.new("BillboardGui")
+        billboard.Name = "Outline_NameTag"
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.Adornee = head
+        billboard.Parent = plr.Character
+        billboard.AlwaysOnTop = true
+        
+        nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = GetRoleEmoji(role) .. " " .. plr.Name .. " [" .. role .. "]"
+        nameLabel.TextColor3 = color
+        nameLabel.TextSize = 14
+        nameLabel.Font = Enum.Font.Jura
+        nameLabel.TextStrokeTransparency = 0.2
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.Parent = billboard
+    end
+    
+    OutlinedPlayers[plr] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Label = nameLabel,
+        Role = role
+    }
+end
+
+local function RemoveOutline(plr)
+    if OutlinedPlayers[plr] then
+        local data = OutlinedPlayers[plr]
+        if data.Highlight then 
+            pcall(function() data.Highlight:Destroy() end)
+        end
+        if data.Billboard then 
+            pcall(function() data.Billboard:Destroy() end)
+        end
+        OutlinedPlayers[plr] = nil
+    end
+end
+
+-- Функция полного обновления Outline (для нового раунда)
+local function FullRefreshOutline()
+    -- Удаляем все старые Outline
+    for plr, _ in pairs(OutlinedPlayers) do
+        RemoveOutline(plr)
+    end
+    
+    -- Создаём заново для всех живых игроков
+    if OutlineEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local role = GetPlayerRole(plr)
+                if role and role ~= "Dead" and role ~= "Unknown" then
+                    if IsPlayerInGame(plr) then
+                        ApplyOutline(plr)
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function UpdateOutline()
+    if OutlineEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local role = GetPlayerRole(plr)
+                local isDead = (role == "Dead" or role == "Unknown" or role == nil)
+                local inGame = IsPlayerInGame(plr)
+                
+                if isDead or not inGame then
+                    -- Игрок мёртв или не в игре - удаляем Outline
+                    if OutlinedPlayers[plr] then
+                        RemoveOutline(plr)
+                    end
+                else
+                    -- Игрок жив - обновляем или создаём Outline
+                    if OutlinedPlayers[plr] then
+                        local data = OutlinedPlayers[plr]
+                        if data.Role ~= role then
+                            local color = GetOutlineColor(role, false)
+                            if data.Highlight then
+                                data.Highlight.OutlineColor = color
+                            end
+                            if data.Label then
+                                data.Label.Text = GetRoleEmoji(role) .. " " .. plr.Name .. " [" .. role .. "]"
+                                data.Label.TextColor3 = color
+                            end
+                            data.Role = role
+                        end
+                    else
+                        ApplyOutline(plr)
+                    end
+                end
+            end
+        end
+    else
+        -- Если Outline выключен - удаляем всё
+        for plr, _ in pairs(OutlinedPlayers) do
+            RemoveOutline(plr)
+        end
+    end
+end
+
+local function OutlineUpdateLoop()
+    if not OutlineEnabled then return end
+    
+    local now = os.clock()
+    if now - LastOutlineUpdate < OutlineUpdateRate then return end
+    LastOutlineUpdate = now
+    
+    UpdateOutline()
+end
+
+-- Обработка добавления нового игрока
+local function SetupPlayer(plr)
+    if plr == LocalPlayer then return end
+    
+    -- Удаляем старые подключения
+    if PlayerConnections[plr] then
+        PlayerConnections[plr]:Disconnect()
+        PlayerConnections[plr] = nil
+    end
+    
+    -- Подписываемся на CharacterAdded (новый раунд/респавн)
+    local conn = plr.CharacterAdded:Connect(function()
+        -- Ждём появления персонажа
+        task.wait(0.5)
+        
+        if OutlineEnabled then
+            -- Удаляем старый Outline
+            RemoveOutline(plr)
+            -- Создаём новый
+            local role = GetPlayerRole(plr)
+            if role and role ~= "Dead" and role ~= "Unknown" then
+                if IsPlayerInGame(plr) then
+                    ApplyOutline(plr)
+                end
+            end
+        end
+    end)
+    
+    PlayerConnections[plr] = conn
+    OutlineMaid:GiveTask(conn)
+end
+
+-- Обработка существующих игроков
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr ~= LocalPlayer then
+        SetupPlayer(plr)
+    end
+end
+
+-- Обработка новых игроков
+Players.PlayerAdded:Connect(function(plr)
+    SetupPlayer(plr)
+end)
+
+-- Обработка удаления игроков
+Players.PlayerRemoving:Connect(function(plr)
+    RemoveOutline(plr)
+    if PlayerConnections[plr] then
+        PlayerConnections[plr]:Disconnect()
+        PlayerConnections[plr] = nil
+    end
+end)
+
+-- Обработка смены карты/раунда (через изменение игроков)
+local function OnRoundChange()
+    -- Небольшая задержка после смены раунда
+    task.wait(1)
+    
+    if OutlineEnabled then
+        print("🔄 Обновление Outline после раунда...")
+        FullRefreshOutline()
+    end
+end
+
+-- Отслеживаем смену раунда через изменение количества игроков в игре
+local LastPlayerCount = #Players:GetPlayers()
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    if #Players:GetPlayers() ~= LastPlayerCount then
+        LastPlayerCount = #Players:GetPlayers()
+        OnRoundChange()
+    end
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    if #Players:GetPlayers() ~= LastPlayerCount then
+        LastPlayerCount = #Players:GetPlayers()
+        OnRoundChange()
+    end
+end)
+
+-- ==============================================
+-- ОСНОВНОЙ ЦИКЛ AIMLOCK
+-- ==============================================
+local function AimLockLoop(deltaTime)
+    if not AimLockEnabled then return end
+    
+    local CurrentCamera = workspace.CurrentCamera 
+    if not CurrentCamera then return end
+
+    local valid = false
+    if TargetPlayer and TargetPlayer.Character then
+        local hum = TargetPlayer.Character:FindFirstChild("Humanoid")
+        if hum and hum.Health > 0 then
+            if GetPlayerRole(TargetPlayer) == "Murderer" then
+                valid = true
+            end
+        end
+    end
+    
+    if WallCheckEnabled and valid then
+        local currentTime = os.clock()
+        if currentTime - LastWallCheckTime > WALL_CHECK_INTERVAL then
+            IsTargetVisibleCache = IsPlayerVisible(TargetPlayer)
+            LastWallCheckTime = currentTime
+        end
+        if not IsTargetVisibleCache then
+            InvisibleTimer = InvisibleTimer + deltaTime
+            if InvisibleTimer > MAX_INVISIBLE_TIME then
+                valid = false
+            end
+        else
+            InvisibleTimer = 0
+        end
+    else
+        InvisibleTimer = 0
+    end
+    
+    if not valid then 
+        local currentTime = os.clock()
+        if currentTime - LastSearchTime > 0.1 then
+            TargetPlayer = FindMurderer(TargetPlayer)
+            LastSearchTime = currentTime
+        end
+    end
+    
+    if TargetPlayer and TargetPlayer.Character then
+        local targetNode = TargetPlayer.Character:FindFirstChild(TargetPart)
+        
+        if targetNode then
+            local vel = targetNode.AssemblyLinearVelocity or Vector3.new()
+            local predVector = Vector3.new(vel.X, vel.Y * 0.3, vel.Z)
+            local predictedPos = targetNode.Position + (predVector * PredictionLevel)
+            
+            CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, predictedPos)
+        end
+    end
+end
+
+-- ==============================================
+-- GUI МЕНЮ
+-- ==============================================
+local function CreateConsoleMenu()
+    print("=" .. string.rep("=", 40))
+    print("  🎯 MM2 AIMLOCK V2.6 | OUTLINE EDITION")
+    print("=" .. string.rep("=", 40))
+    print("  [1] Toggle Aim Lock    [Currently: " .. (AimLockEnabled and "ON" or "OFF") .. "]")
+    print("  [2] Toggle Wall Check  [Currently: " .. (WallCheckEnabled and "ON" or "OFF") .. "]")
+    print("  [3] Toggle Outline     [Currently: " .. (OutlineEnabled and "ON" or "OFF") .. "]")
+    print("  [4] Target Part        [Currently: " .. TargetPart .. "]")
+    print("  [5] Prediction Level   [Currently: " .. PredictionLevel .. "]")
+    print("  [6] Print Status")
+    print("  [7] Exit Menu")
+    print("=" .. string.rep("=", 40))
+    print("💡 Quick Toggle Aim: Press 'T'")
+    print("💡 Quick Toggle WallCheck: Press 'G'")
+    print("💡 Quick Toggle Outline: Press 'E'")
+    print("🔄 Outline автоматически обновляется после каждого раунда")
+end
+
+-- ==============================================
+-- СОЗДАНИЕ КНОПОК
+-- ==============================================
+local function UpdateAimButtonState()
+    local btn = BindableButtons.Buttons["aim_toggle"]
+    if not btn then return end
+    BindableButtons.UpdateBButtonText("aim_toggle", AimLockEnabled and "Aim:ON" or "Aim:OFF")
+    BindableButtons.UpdateBButtonColor("aim_toggle", AimLockEnabled, "aim")
+end
+
+local function ToggleAimLock()
+    AimLockEnabled = not AimLockEnabled
+    if AimLockEnabled then 
+        TargetPlayer = FindMurderer(nil) 
+    else 
+        TargetPlayer = nil 
+    end
+    UpdateAimButtonState()
+    print("⚡ Aim Lock: " .. (AimLockEnabled and "ENABLED" or "DISABLED"))
+end
+
+local function UpdateWallButtonState()
+    local btn = BindableButtons.Buttons["wall_toggle"]
+    if not btn then return end
+    BindableButtons.UpdateBButtonText("wall_toggle", WallCheckEnabled and "Wall:ON" or "Wall:OFF")
+    BindableButtons.UpdateBButtonColor("wall_toggle", WallCheckEnabled, "wall")
+end
+
+local function ToggleWallCheck()
+    WallCheckEnabled = not WallCheckEnabled
+    UpdateWallButtonState()
+    print("🧱 Wall Check: " .. (WallCheckEnabled and "ENABLED" or "DISABLED"))
+end
+
+local function UpdateOutlineButtonState()
+    local btn = BindableButtons.Buttons["outline_toggle"]
+    if not btn then return end
+    BindableButtons.UpdateBButtonText("outline_toggle", OutlineEnabled and "OL:ON" or "OL:OFF")
+    BindableButtons.UpdateBButtonColor("outline_toggle", OutlineEnabled, "outline")
+end
+
+local function ToggleOutline()
+    OutlineEnabled = not OutlineEnabled
+    if OutlineEnabled then
+        FullRefreshOutline()
+    else
+        for plr, _ in pairs(OutlinedPlayers) do
+            RemoveOutline(plr)
+        end
+    end
+    UpdateOutlineButtonState()
+    print("👁️ Outline: " .. (OutlineEnabled and "ENABLED" or "DISABLED"))
+end
+
+local function CreateButtons()
+    if not BindableButtons.Buttons["aim_toggle"] then
+        BindableButtons.AddBButton("aim_toggle", "Aim:OFF", function()
+            ToggleAimLock()
+        end, false, "aim")
+        
+        local btn = BindableButtons.Buttons["aim_toggle"]
+        if btn then
+            local screen = Workspace.CurrentCamera.ViewportSize
+            btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
+        end
+    end
+    
+    if not BindableButtons.Buttons["wall_toggle"] then
+        BindableButtons.AddBButton("wall_toggle", "Wall:OFF", function()
+            ToggleWallCheck()
+        end, false, "wall")
+        
+        local btn = BindableButtons.Buttons["wall_toggle"]
+        if btn then
+            local screen = Workspace.CurrentCamera.ViewportSize
+            btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
+        end
+    end
+    
+    if not BindableButtons.Buttons["outline_toggle"] then
+        BindableButtons.AddBButton("outline_toggle", "OL:OFF", function()
+            ToggleOutline()
+        end, false, "outline")
+        
+        local btn = BindableButtons.Buttons["outline_toggle"]
+        if btn then
+            local screen = Workspace.CurrentCamera.ViewportSize
+            btn.Size = __UD2(bindButtonSize * (screen.Y / screen.X), 0, bindButtonSize, 0)
+        end
+    end
+    
+    UpdateAimButtonState()
+    UpdateWallButtonState()
+    UpdateOutlineButtonState()
+end
+
+local function DeleteButtons()
+    BindableButtons.DeleteBButton("aim_toggle")
+    BindableButtons.DeleteBButton("wall_toggle")
+    BindableButtons.DeleteBButton("outline_toggle")
+end
+
+local function ToggleButtonsVisibility()
+    for _, id in ipairs({"aim_toggle", "wall_toggle", "outline_toggle"}) do
+        local btn = BindableButtons.Buttons[id]
+        if btn then
+            btn.Visible = ShowBindableButton
+        end
+    end
+end
+
+-- ==============================================
+-- УПРАВЛЕНИЕ ГОРЯЧИМИ КЛАВИШАМИ
+-- ==============================================
+local function SetupKeybinds()
+    local inputBeganConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        
+        if input.KeyCode == Enum.KeyCode.T then
+            ToggleAimLock()
+        end
+        
+        if input.KeyCode == Enum.KeyCode.G then
+            ToggleWallCheck()
+        end
+        
+        if input.KeyCode == Enum.KeyCode.E then
+            ToggleOutline()
+        end
+    end)
+    
+    RootMaid:GiveTask(inputBeganConnection)
+end
+
+-- ==============================================
+-- ЗАПУСК
+-- ==============================================
+CreateButtons()
+ToggleButtonsVisibility()
+SetupKeybinds()
+
+-- ==============================================
+-- ПРИВЯЗКА AIMLOCK К RENDERSTEP
+-- ==============================================
+RunService:BindToRenderStep(
+    "MM2_AimLock_PhaseSync", 
+    Enum.RenderPriority.Camera.Value + 1, 
+    AimLockLoop
+)
+
+RunService.Heartbeat:Connect(OutlineUpdateLoop)
+
+-- Очистка
+LocalPlayer.CharacterAdded:Connect(function()
+    TargetPlayer = nil
+end)
+
+RootMaid:GiveTask(function()
+    DeleteButtons()
+    RunService:UnbindFromRenderStep("MM2_AimLock_PhaseSync")
+    if MainGUI then MainGUI:Destroy() end
+    OutlineMaid:Destroy()
+    for plr, _ in pairs(OutlinedPlayers) do
+        RemoveOutline(plr)
+    end
+    OutlinedPlayers = {}
+    for _, conn in pairs(PlayerConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    PlayerConnections = {}
+end)
+
+-- ==============================================
+-- ВЫВОД МЕНЮ
+-- ==============================================
+print("✅ MM2 Aim Lock V2.6 + OUTLINE Loaded!")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("🎯 ТРИ КНОПКИ НА ЭКРАНЕ:")
+print("  🔵 Aim:ON/OFF  -  Вкл/Выкл автонаведение")
+print("  🔵 Wall:ON/OFF -  Вкл/Выкл проверку видимости")
+print("  🔴 OL:ON/OFF   -  Вкл/Выкл Outline подсветку")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("🎨 ЦВЕТА OUTLINE:")
+print("  🔴 Красный  - Murderer (убийца)")
+print("  🔵 Синий    - Sheriff (шериф)")
+print("  🟢 Зелёный  - Innocent (невиновный)")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("🔄 Outline ОБНОВЛЯЕТСЯ АВТОМАТИЧЕСКИ:")
+print("  ✅ После каждого раунда")
+print("  ✅ При респавне игроков")
+print("  ✅ При смене персонажа")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("⌨️ ГОРЯЧИЕ КЛАВИШИ:")
+print("  [T] - Toggle Aim Lock")
+print("  [G] - Toggle Wall Check")
+print("  [E] - Toggle Outline")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+CreateConsoleMenu()
+
+_G.MM2AimMenu = CreateConsoleMenu
+_G.MM2Toggle = ToggleAimLock
+_G.MM2Wall = ToggleWallCheck
+_G.MM2Outline = ToggleOutline
+
+print("🔧 Type 'MM2AimMenu()' to show menu")
+print("🔧 Type 'MM2Toggle()' to toggle aim")
+print("🔧 Type 'MM2Wall()' to toggle wallcheck")
+print("🔧 Type 'MM2Outline()' to toggle outline")
