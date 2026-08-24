@@ -940,7 +940,8 @@ local function CreateBombJumpSystem(config)
         Cooldown = Instance.new("Sound")
     }
     Sounds.Click.SoundId = "rbxassetid://6895079853"
-    Sounds.Click.Volume = 1.0    Sounds.Cooldown.SoundId = "rbxassetid://138090596"
+    Sounds.Click.Volume = 1.0
+    Sounds.Cooldown.SoundId = "rbxassetid://138090596"
     Sounds.Cooldown.Volume = 1.0
     
     local function PlaySound(snd)
@@ -1929,30 +1930,31 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ ДЛЯ RESET GUI
+-- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ ДЛЯ RESET GUI (ИСПРАВЛЕННАЯ)
 -- ==============================================
-local function MakeResetGuiDraggable(frame, titleBar)
+local function MakeResetGuiDraggable(frame)
     local dragging = false
     local dragStart = nil
     local startPos = nil
+    local connection = nil
     
-    titleBar.InputBegan:Connect(function(input)
+    local function onInputBegan(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or 
            input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
         end
-    end)
+    end
     
-    titleBar.InputEnded:Connect(function(input)
+    local function onInputEnded(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or 
            input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
-    end)
+    end
     
-    UserInputService.InputChanged:Connect(function(input)
+    local function onInputChanged(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
                          input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
@@ -1964,18 +1966,22 @@ local function MakeResetGuiDraggable(frame, titleBar)
                 0
             )
         end
-    end)
+    end
+    
+    frame.InputBegan:Connect(onInputBegan)
+    frame.InputEnded:Connect(onInputEnded)
+    __UIS.InputChanged:Connect(onInputChanged)
 end
 
 -- ==============================================
 -- СОЗДАНИЕ ОТДЕЛЬНОГО GUI ДЛЯ RESET (С ПЕРЕТАСКИВАНИЕМ)
 -- ==============================================
 local function CreateResetGUIElements()
-    -- Главный фрейм (опущен ниже - Y позиция 0.55)
+    -- Главный фрейм (опущен ниже - Y позиция 0.6)
     local frame = Instance.new("Frame")
     frame.Name = "ResetMainFrame"
     frame.Size = __UD2(0, 350, 0, 450)
-    frame.Position = __UD2(0.5, -175, 0.55, -225) -- Опущено ниже
+    frame.Position = __UD2(0.5, -175, 0.6, -225) -- Опущено ниже
     frame.AnchorPoint = __V2(0.5, 0.5)
     frame.BackgroundColor3 = __RGB(20, 20, 30)
     frame.BackgroundTransparency = 0.05
@@ -2002,7 +2008,7 @@ local function CreateResetGUIElements()
     title.Position = __UD2(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.Jura
-    title.Text = "🔄 RT SYSTEM v3.5"  -- Переименовано в RT
+    title.Text = "🔄 RT SYSTEM v3.5"
     title.TextColor3 = __RGB(255, 100, 100)
     title.TextSize = 18
     title.TextXAlignment = Enum.TextXAlignment.Left
@@ -2029,8 +2035,8 @@ local function CreateResetGUIElements()
         ResetState.resetGuiOpen = false
     end)
     
-    -- Делаем GUI перетаскиваемым
-    MakeResetGuiDraggable(frame, titleBar)
+    -- Делаем GUI перетаскиваемым (весь фрейм)
+    MakeResetGuiDraggable(frame)
     
     -- Скроллинг фрейм
     local scrollFrame = Instance.new("ScrollingFrame")
@@ -2323,7 +2329,7 @@ local function CreateAllButtons()
         BindableButtons.AddBButton("wallhop_toggle", "WH:OFF", ToggleWallhop, false, "wallhop", buttonSize)
     end
     
-    -- Reset GUI Button (RT - переименовано)
+    -- Reset GUI Button (RT)
     if not BindableButtons.Buttons["reset_gui_toggle"] then
         BindableButtons.AddBButton("reset_gui_toggle", "RT", ToggleResetGUI, false, "reset", buttonSize)
     end
