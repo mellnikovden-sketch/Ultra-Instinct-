@@ -1985,14 +1985,14 @@ local function MakeResetGuiDraggable(frame)
 end
 
 -- ==============================================
--- СОЗДАНИЕ GUI ДЛЯ RESET (УМЕНЬШЕННЫЙ)
+-- СОЗДАНИЕ GUI ДЛЯ RESET (С ОТДЕЛЬНОЙ СЕКЦИЕЙ ДЛЯ ИГРОКОВ)
 -- ==============================================
 local function CreateResetGUIElements()
-    -- Главный фрейм (уменьшенный)
+    -- Главный фрейм (увеличенный для отдельной секции)
     local frame = Instance.new("Frame")
     frame.Name = "ResetMainFrame"
-    frame.Size = __UD2(0, 280, 0, 380) -- Уменьшен с 320x460 до 280x380
-    frame.Position = __UD2(0.5, -140, 0.9, -190)
+    frame.Size = __UD2(0, 280, 0, 420)
+    frame.Position = __UD2(0.5, -140, 0.9, -210)
     frame.AnchorPoint = __V2(0.5, 0.5)
     frame.BackgroundColor3 = __RGB(20, 20, 30)
     frame.BackgroundTransparency = 0.05
@@ -2003,7 +2003,7 @@ local function CreateResetGUIElements()
     
     Instance.new("UICorner", frame).CornerRadius = __UD(0, 8)
     
-    -- Заголовок (уменьшенный)
+    -- Заголовок
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Size = __UD2(1, 0, 0, 30)
@@ -2047,7 +2047,7 @@ local function CreateResetGUIElements()
     -- Делаем GUI перетаскиваемым
     MakeResetGuiDraggable(frame)
     
-    -- Скроллинг фрейм (уменьшенный)
+    -- Скроллинг фрейм
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "ScrollFrame"
     scrollFrame.Size = __UD2(1, -8, 1, -38)
@@ -2063,20 +2063,20 @@ local function CreateResetGUIElements()
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 4) -- Уменьшен отступ
+    layout.Padding = UDim.new(0, 4)
     layout.Parent = scrollFrame
     
-    -- Функции создания элементов (уменьшенные)
+    -- Функции создания элементов
     local function AddButton(text, color, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = __UD2(0.92, 0, 0, 26) -- Уменьшен с 32 до 26
+        btn.Size = __UD2(0.92, 0, 0, 26)
         btn.BackgroundColor3 = color or __RGB(30, 30, 50)
         btn.BackgroundTransparency = 0.3
         btn.BorderSizePixel = 0
         btn.Font = Enum.Font.Jura
         btn.Text = text
         btn.TextColor3 = __RGB(255, 255, 255)
-        btn.TextSize = 11 -- Уменьшен с 13 до 11
+        btn.TextSize = 11
         btn.Parent = scrollFrame
         
         Instance.new("UICorner", btn).CornerRadius = __UD(0, 4)
@@ -2087,7 +2087,7 @@ local function CreateResetGUIElements()
     
     local function AddToggle(text, getState, setState)
         local container = Instance.new("Frame")
-        container.Size = __UD2(0.92, 0, 0, 26) -- Уменьшен с 32 до 26
+        container.Size = __UD2(0.92, 0, 0, 26)
         container.BackgroundTransparency = 1
         container.Parent = scrollFrame
         
@@ -2098,7 +2098,7 @@ local function CreateResetGUIElements()
         label.Font = Enum.Font.Jura
         label.Text = text
         label.TextColor3 = __RGB(200, 200, 200)
-        label.TextSize = 11 -- Уменьшен с 13 до 11
+        label.TextSize = 11
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
@@ -2109,7 +2109,7 @@ local function CreateResetGUIElements()
         toggle.BorderSizePixel = 0
         toggle.Font = Enum.Font.Jura
         toggle.TextColor3 = __RGB(255, 255, 255)
-        toggle.TextSize = 10 -- Уменьшен с 11 до 10
+        toggle.TextSize = 10
         toggle.Parent = container
         
         Instance.new("UICorner", toggle).CornerRadius = __UD(0, 4)
@@ -2128,113 +2128,135 @@ local function CreateResetGUIElements()
         return container
     end
     
-    -- Выбор игрока (уменьшенный)
-    local function AddPlayerSelector()
-        local container = Instance.new("Frame")
-        container.Size = __UD2(0.92, 0, 0, 34) -- Уменьшен с 40 до 34
-        container.BackgroundTransparency = 1
-        container.Parent = scrollFrame
+    -- ===== ОТДЕЛЬНАЯ СЕКЦИЯ ДЛЯ ВЫБОРА ИГРОКА =====
+    local function AddPlayerSection()
+        -- Контейнер секции
+        local section = Instance.new("Frame")
+        section.Size = __UD2(0.92, 0, 0, 70)
+        section.BackgroundColor3 = __RGB(30, 20, 40)
+        section.BackgroundTransparency = 0.3
+        section.BorderSizePixel = 1
+        section.BorderColor3 = __RGB(60, 40, 80)
+        section.Parent = scrollFrame
         
-        local label = Instance.new("TextLabel")
-        label.Size = __UD2(1, 0, 0, 14)
-        label.Position = __UD2(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Font = Enum.Font.Jura
-        label.Text = "🎯 Select Player"
-        label.TextColor3 = __RGB(200, 200, 200)
-        label.TextSize = 10
-        label.TextXAlignment = Enum.TextXAlignment.Center
-        label.Parent = container
+        Instance.new("UICorner", section).CornerRadius = __UD(0, 4)
         
-        local dropdown = Instance.new("TextButton")
-        dropdown.Size = __UD2(1, 0, 0, 18)
-        dropdown.Position = __UD2(0, 0, 0, 14)
-        dropdown.BackgroundColor3 = __RGB(30, 30, 50)
-        dropdown.BackgroundTransparency = 0.3
-        dropdown.BorderSizePixel = 0
-        dropdown.Font = Enum.Font.Jura
-        dropdown.Text = "Select Player..."
-        dropdown.TextColor3 = __RGB(200, 200, 200)
-        dropdown.TextSize = 10
-        dropdown.Parent = container
+        -- Заголовок секции
+        local sectionLabel = Instance.new("TextLabel")
+        sectionLabel.Size = __UD2(1, 0, 0, 18)
+        sectionLabel.Position = __UD2(0, 0, 0, 0)
+        sectionLabel.BackgroundTransparency = 1
+        sectionLabel.Font = Enum.Font.Jura
+        sectionLabel.Text = "🎯 PLAYER SELECT"
+        sectionLabel.TextColor3 = __RGB(255, 200, 100)
+        sectionLabel.TextSize = 11
+        sectionLabel.TextXAlignment = Enum.TextXAlignment.Center
+        sectionLabel.Parent = section
         
-        Instance.new("UICorner", dropdown).CornerRadius = __UD(0, 3)
+        -- Контейнер для кнопок игроков
+        local playersContainer = Instance.new("Frame")
+        playersContainer.Size = __UD2(1, 0, 0, 48)
+        playersContainer.Position = __UD2(0, 0, 0, 20)
+        playersContainer.BackgroundTransparency = 1
+        playersContainer.ClipsDescendants = true
+        playersContainer.Parent = section
         
-        local listFrame = Instance.new("Frame")
-        listFrame.Size = __UD2(1, 0, 0, 80)
-        listFrame.Position = __UD2(0, 0, 0, 34)
-        listFrame.BackgroundColor3 = __RGB(20, 20, 30)
-        listFrame.BackgroundTransparency = 0.1
-        listFrame.BorderSizePixel = 1
-        listFrame.BorderColor3 = __RGB(50, 50, 80)
-        listFrame.Visible = false
-        listFrame.ZIndex = 10
-        listFrame.Parent = container
+        -- Список игроков в виде кнопок (горизонтальный скролл)
+        local playersScroll = Instance.new("ScrollingFrame")
+        playersScroll.Size = __UD2(1, 0, 1, 0)
+        playersScroll.Position = __UD2(0, 0, 0, 0)
+        playersScroll.BackgroundTransparency = 1
+        playersScroll.BorderSizePixel = 0
+        playersScroll.CanvasSize = __UD2(0, 0, 0, 0)
+        playersScroll.ScrollBarThickness = 3
+        playersScroll.ScrollBarImageColor3 = __RGB(100, 50, 150)
+        playersScroll.Parent = playersContainer
         
-        Instance.new("UICorner", listFrame).CornerRadius = __UD(0, 3)
+        local playersLayout = Instance.new("UIListLayout")
+        playersLayout.FillDirection = Enum.FillDirection.Horizontal
+        playersLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        playersLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        playersLayout.Padding = UDim.new(0, 4)
+        playersLayout.Parent = playersScroll
         
-        local listLayout = Instance.new("UIListLayout")
-        listLayout.FillDirection = Enum.FillDirection.Vertical
-        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        listLayout.Padding = UDim.new(0, 1)
-        listLayout.Parent = listFrame
-        
-        local function UpdateList()
-            for _, child in ipairs(listFrame:GetChildren()) do
+        -- Функция обновления списка игроков
+        local function UpdatePlayersList()
+            -- Очищаем старые кнопки
+            for _, child in ipairs(playersScroll:GetChildren()) do
                 if child:IsA("TextButton") then child:Destroy() end
             end
             
+            local playerCount = 0
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
                     local btn = Instance.new("TextButton")
-                    btn.Size = __UD2(1, 0, 0, 20)
-                    btn.BackgroundColor3 = __RGB(30, 30, 50)
+                    btn.Size = __UD2(0, 60, 0, 40)
+                    btn.BackgroundColor3 = __RGB(40, 30, 60)
                     btn.BackgroundTransparency = 0.3
                     btn.BorderSizePixel = 0
                     btn.Font = Enum.Font.Jura
                     btn.Text = player.Name
                     btn.TextColor3 = __RGB(200, 200, 200)
                     btn.TextSize = 10
-                    btn.Parent = listFrame
+                    btn.TextWrapped = true
+                    btn.Parent = playersScroll
                     
-                    Instance.new("UICorner", btn).CornerRadius = __UD(0, 2)
+                    Instance.new("UICorner", btn).CornerRadius = __UD(0, 4)
+                    
+                    -- Подсветка выбранного
+                    if ResetState.resetSelPlr and ResetState.resetSelPlr.UserId == player.UserId then
+                        btn.BackgroundColor3 = __RGB(80, 40, 80)
+                        btn.TextColor3 = __RGB(255, 255, 255)
+                    end
                     
                     btn.MouseButton1Click:Connect(function()
-                        dropdown.Text = player.Name
-                        listFrame.Visible = false
+                        -- Снимаем подсветку со всех
+                        for _, child in ipairs(playersScroll:GetChildren()) do
+                            if child:IsA("TextButton") then
+                                child.BackgroundColor3 = __RGB(40, 30, 60)
+                                child.TextColor3 = __RGB(200, 200, 200)
+                            end
+                        end
+                        -- Подсвечиваем выбранного
+                        btn.BackgroundColor3 = __RGB(80, 40, 80)
+                        btn.TextColor3 = __RGB(255, 255, 255)
+                        
                         ResetState.resetSelPlr = player
                         Reset_Notify("Selected", player.Name, 2)
                     end)
+                    
+                    playerCount = playerCount + 1
                 end
             end
+            
+            -- Обновляем размер Canvas
+            local totalWidth = playerCount * 64
+            playersScroll.CanvasSize = __UD2(0, math.max(totalWidth, 240), 0, 0)
         end
         
-        dropdown.MouseButton1Click:Connect(function()
-            listFrame.Visible = not listFrame.Visible
-            if listFrame.Visible then
-                UpdateList()
-                local children = {}
-                for _, child in ipairs(listFrame:GetChildren()) do
-                    if child:IsA("TextButton") then
-                        table.insert(children, child)
-                    end
-                end
-                local height = #children * 21
-                listFrame.Size = __UD2(1, 0, 0, math.min(height, 120))
-            end
-        end)
+        -- Обновляем список при открытии
+        UpdatePlayersList()
         
-        return container
+        -- Обновляем список при добавлении/удалении игроков
+        local playerAddedConn = Players.PlayerAdded:Connect(UpdatePlayersList)
+        local playerRemovingConn = Players.PlayerRemoving:Connect(UpdatePlayersList)
+        
+        -- Сохраняем подключения для очистки
+        RootMaid:GiveTask(playerAddedConn)
+        RootMaid:GiveTask(playerRemovingConn)
+        
+        return section
     end
     
-    -- === СОЗДАНИЕ ЭЛЕМЕНТОВ ===
+    -- ===== СОЗДАНИЕ ЭЛЕМЕНТОВ =====
     
     AddButton("🔄 Check Role", __RGB(40, 40, 80), function()
         local role = Reset_getMyRole()
         Reset_Notify("Your Role", role or "Innocent", 3)
     end)
     
-    AddPlayerSelector()
+    -- ОТДЕЛЬНАЯ СЕКЦИЯ С ИГРОКАМИ
+    AddPlayerSection()
     
     AddButton("🔄 Reset Selected", __RGB(80, 40, 40), function()
         if ResetState.resetSelPlr then
