@@ -1930,57 +1930,19 @@ local function Reset_findMurderer()
 end
 
 -- ==============================================
--- ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ ДЛЯ RESET GUI
--- ==============================================
-local function MakeResetGuiDraggable(frame)
-    local dragging = false
-    local dragStart = nil
-    local startPos = nil
-    
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-        end
-    end)
-    
-    frame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-    
-    __UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
-                         input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            local parentSize = frame.Parent.AbsoluteSize
-            frame.Position = __UD2(
-                startPos.X.Scale + (delta.X / parentSize.X),
-                0,
-                startPos.Y.Scale + (delta.Y / parentSize.Y),
-                0
-            )
-        end
-    end)
-end
-
--- ==============================================
--- СОЗДАНИЕ ОТДЕЛЬНОГО GUI ДЛЯ RESET
+-- СОЗДАНИЕ GUI ДЛЯ RESET (ПРАВИЛЬНОЕ РАСПОЛОЖЕНИЕ)
 -- ==============================================
 local function CreateResetGUIElements()
-    -- Главный фрейм (позиция 0.9)
+    -- Главный фрейм
     local frame = Instance.new("Frame")
     frame.Name = "ResetMainFrame"
-    frame.Size = __UD2(0, 350, 0, 480)
-    frame.Position = __UD2(0.5, -175, 0.9, -240) -- Позиция 0.9
+    frame.Size = __UD2(0, 320, 0, 460)
+    frame.Position = __UD2(0.5, -160, 0.9, -230)
     frame.AnchorPoint = __V2(0.5, 0.5)
     frame.BackgroundColor3 = __RGB(20, 20, 30)
     frame.BackgroundTransparency = 0.05
-    frame.BorderSizePixel = 0
+    frame.BorderSizePixel = 1
+    frame.BorderColor3 = __RGB(50, 30, 80)
     frame.ClipsDescendants = true
     frame.Parent = ResetGUI
     
@@ -2046,13 +2008,13 @@ local function CreateResetGUIElements()
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 4)
+    layout.Padding = UDim.new(0, 5)
     layout.Parent = scrollFrame
     
-    -- Функция создания кнопок
-    local function AddResetButton(text, color, callback)
+    -- Функции создания элементов
+    local function AddButton(text, color, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = __UD2(0.9, 0, 0, 32)
+        btn.Size = __UD2(0.92, 0, 0, 32)
         btn.BackgroundColor3 = color or __RGB(30, 30, 50)
         btn.BackgroundTransparency = 0.3
         btn.BorderSizePixel = 0
@@ -2068,9 +2030,9 @@ local function CreateResetGUIElements()
         return btn
     end
     
-    local function AddResetToggle(text, getState, setState)
+    local function AddToggle(text, getState, setState)
         local container = Instance.new("Frame")
-        container.Size = __UD2(0.9, 0, 0, 32)
+        container.Size = __UD2(0.92, 0, 0, 32)
         container.BackgroundTransparency = 1
         container.Parent = scrollFrame
         
@@ -2111,10 +2073,10 @@ local function CreateResetGUIElements()
         return container
     end
     
-    -- Функция для выбора игрока
-    local function AddPlayerSelector(labelText, callback)
+    -- Выбор игрока
+    local function AddPlayerSelector()
         local container = Instance.new("Frame")
-        container.Size = __UD2(0.9, 0, 0, 40)
+        container.Size = __UD2(0.92, 0, 0, 40)
         container.BackgroundTransparency = 1
         container.Parent = scrollFrame
         
@@ -2123,7 +2085,7 @@ local function CreateResetGUIElements()
         label.Position = __UD2(0, 0, 0, 0)
         label.BackgroundTransparency = 1
         label.Font = Enum.Font.Jura
-        label.Text = labelText
+        label.Text = "🎯 Select Player to Reset"
         label.TextColor3 = __RGB(200, 200, 200)
         label.TextSize = 12
         label.TextXAlignment = Enum.TextXAlignment.Center
@@ -2143,7 +2105,6 @@ local function CreateResetGUIElements()
         
         Instance.new("UICorner", dropdown).CornerRadius = __UD(0, 4)
         
-        -- Создаём список игроков
         local listFrame = Instance.new("Frame")
         listFrame.Size = __UD2(1, 0, 0, 100)
         listFrame.Position = __UD2(0, 0, 0, 40)
@@ -2163,14 +2124,12 @@ local function CreateResetGUIElements()
         listLayout.Padding = UDim.new(0, 1)
         listLayout.Parent = listFrame
         
-        local function UpdatePlayerList()
-            -- Очищаем старый список
+        local function UpdateList()
             for _, child in ipairs(listFrame:GetChildren()) do
                 if child:IsA("TextButton") then child:Destroy() end
             end
             
-            local players = Players:GetPlayers()
-            for _, player in ipairs(players) do
+            for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
                     local btn = Instance.new("TextButton")
                     btn.Size = __UD2(1, 0, 0, 25)
@@ -2188,7 +2147,8 @@ local function CreateResetGUIElements()
                     btn.MouseButton1Click:Connect(function()
                         dropdown.Text = player.Name
                         listFrame.Visible = false
-                        callback(player)
+                        ResetState.resetSelPlr = player
+                        Reset_Notify("Selected", player.Name .. " for reset", 2)
                     end)
                 end
             end
@@ -2197,8 +2157,7 @@ local function CreateResetGUIElements()
         dropdown.MouseButton1Click:Connect(function()
             listFrame.Visible = not listFrame.Visible
             if listFrame.Visible then
-                UpdatePlayerList()
-                -- Обновляем размер списка
+                UpdateList()
                 local children = {}
                 for _, child in ipairs(listFrame:GetChildren()) do
                     if child:IsA("TextButton") then
@@ -2213,20 +2172,18 @@ local function CreateResetGUIElements()
         return container
     end
     
-    -- Создание элементов GUI
-    AddResetButton("🔄 Check My Role", __RGB(40, 40, 80), function()
+    -- === СОЗДАНИЕ ЭЛЕМЕНТОВ ===
+    
+    AddButton("🔄 Check My Role", __RGB(40, 40, 80), function()
         local role = Reset_getMyRole()
         Reset_Notify("Your Role", role or "Innocent / No Role", 4)
     end)
     
-    -- ВЫБОР ИГРОКА ДЛЯ СБРОСА
-    AddPlayerSelector("🎯 Select Player to Reset", function(player)
-        ResetState.resetSelPlr = player
-        Reset_Notify("Selected", player.Name .. " for reset", 2)
-    end)
+    -- Выбор игрока
+    AddPlayerSelector()
     
-    -- КНОПКА СБРОСА ВЫБРАННОГО ИГРОКА
-    AddResetButton("🔄 Reset Selected Player", __RGB(80, 40, 40), function()
+    -- Кнопка сброса выбранного
+    AddButton("🔄 Reset Selected Player", __RGB(80, 40, 40), function()
         if ResetState.resetSelPlr then
             if Reset_isWhitelisted(ResetState.resetSelPlr) then
                 Reset_Notify("Whitelist", ResetState.resetSelPlr.Name .. " is whitelisted!", 3)
@@ -2239,27 +2196,27 @@ local function CreateResetGUIElements()
         end
     end)
     
-    AddResetButton("🔄 Reset Sheriff", __RGB(80, 40, 40), function()
+    AddButton("🔄 Reset Sheriff", __RGB(80, 40, 40), function()
         if not Reset_canTargetSheriff() then
             Reset_Notify("Blocked", "Murderer cannot target Sheriff", 3)
             return
         end
         local target = Reset_findSheriff()
         if target then task.spawn(VoidReset, target)
-        else Reset_Notify("Error", "No Sheriff / Gun Holder Found", 3) end
+        else Reset_Notify("Error", "No Sheriff found", 3) end
     end)
     
-    AddResetButton("🔄 Reset Murderer", __RGB(40, 40, 80), function()
+    AddButton("🔄 Reset Murderer", __RGB(40, 40, 80), function()
         if not Reset_canTargetMurderer() then
             Reset_Notify("Blocked", "Sheriff cannot target Murderer", 3)
             return
         end
         local murderer = Reset_findMurderer()
         if murderer then task.spawn(VoidReset, murderer)
-        else Reset_Notify("Error", "No Murderer Found", 3) end
+        else Reset_Notify("Error", "No Murderer found", 3) end
     end)
     
-    AddResetButton("🔄 Reset Both", __RGB(80, 40, 80), function()
+    AddButton("🔄 Reset Both", __RGB(80, 40, 80), function()
         local role = Reset_getMyRole()
         if role == "Murderer" then
             Reset_Notify("Blocked", "You are the Murderer", 3)
@@ -2278,7 +2235,7 @@ local function CreateResetGUIElements()
         end
     end)
     
-    AddResetButton("🔄 Reset All", __RGB(80, 0, 0), function()
+    AddButton("🔄 Reset All", __RGB(80, 0, 0), function()
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and not Reset_isWhitelisted(p) then
                 task.spawn(VoidReset, p)
@@ -2286,7 +2243,7 @@ local function CreateResetGUIElements()
         end
     end)
     
-    AddResetToggle("🛡️ Noclip", 
+    AddToggle("🛡️ Noclip", 
         function() return ResetState.noclipEnabled end,
         function(v) 
             ResetState.noclipEnabled = v
@@ -2295,7 +2252,7 @@ local function CreateResetGUIElements()
         end
     )
     
-    AddResetToggle("🔄 Anti-Fling",
+    AddToggle("🔄 Anti-Fling",
         function() return ResetState.antiFlingEnabled end,
         function(v)
             ResetState.antiFlingEnabled = v
@@ -2310,12 +2267,12 @@ local function CreateResetGUIElements()
         end
     )
     
-    AddResetButton("📋 Clear Whitelist", __RGB(50, 30, 30), function()
+    AddButton("📋 Clear Whitelist", __RGB(50, 30, 30), function()
         ResetState.whitelist = {}
         Reset_Notify("Whitelist", "Cleared!", 2)
     end)
     
-    AddResetButton("❌ Close RT GUI", __RGB(100, 0, 0), function()
+    AddButton("❌ Close RT GUI", __RGB(100, 0, 0), function()
         ResetGUI.Enabled = false
         ResetState.resetGuiOpen = false
     end)
@@ -2326,7 +2283,6 @@ local function CreateResetGUIElements()
     end)
 end
 
--- Создаём элементы GUI
 CreateResetGUIElements()
 
 -- ==============================================
