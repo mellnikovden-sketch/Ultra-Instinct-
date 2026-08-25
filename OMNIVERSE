@@ -1,11 +1,13 @@
 --[[
     ═══════════════════════════════════════════════════════════
-    🔥 OMEGA ULTIMATE v5.3 - ШИРОКОЕ МЕНЮ 🔥
+    🔥 OMEGA ULTIMATE v5.3 - ПОЛНАЯ ВЕРСИЯ С ЦВЕТАМИ 🔥
     ═══════════════════════════════════════════════════════════
-    РАЗМЕРЫ:
-    • Ширина: 85% экрана
-    • Высота: 80% экрана
-    • Как на вашем скриншоте
+    ОСОБЕННОСТИ:
+    • Полноценное GUI меню с категориями
+    • 24 цветовых пресета для GUI
+    • Открытие/закрытие по кнопке
+    • Мобильная оптимизация
+    • Компактный выбор цветов
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -21,27 +23,163 @@ local LocalPlayer = Players.LocalPlayer
 
 _G.Menu = {
     Categories = {},
-    IsOpen = false
+    IsOpen = false,
+    ColorPicker = nil
 }
 
 -- ═══════════════════════════════════════════════════════════
--- ЦВЕТА (СТИЛЬ OVERDRIVE)
+-- ЦВЕТОВЫЕ ПРЕСЕТЫ (24 ЦВЕТА)
 -- ═══════════════════════════════════════════════════════════
 
-local COLORS = {
-    bg = Color3.fromRGB(10, 8, 20),
-    bgSecondary = Color3.fromRGB(20, 16, 35),
-    bgHover = Color3.fromRGB(40, 30, 60),
-    border = Color3.fromRGB(80, 60, 180),
-    accent = Color3.fromRGB(120, 80, 255),
-    accentLight = Color3.fromRGB(180, 150, 255),
-    text = Color3.fromRGB(200, 190, 220),
-    textDim = Color3.fromRGB(150, 140, 170),
-    textBright = Color3.fromRGB(255, 255, 255),
-    success = Color3.fromRGB(80, 255, 150),
-    warning = Color3.fromRGB(255, 200, 80),
-    danger = Color3.fromRGB(255, 80, 80),
+local COLOR_PRESETS = {
+    OBSIDIAN = {name = "🪨 Obsidian", colors = {
+        Color3.fromRGB(60, 40, 120), Color3.fromRGB(120, 80, 200),
+        Color3.fromRGB(80, 60, 160), Color3.fromRGB(40, 30, 100),
+        Color3.fromRGB(60, 40, 120)
+    }},
+    GOLD = {name = "✨ Gold", colors = {
+        Color3.fromRGB(200, 150, 20), Color3.fromRGB(255, 215, 0),
+        Color3.fromRGB(200, 150, 20), Color3.fromRGB(150, 100, 10),
+        Color3.fromRGB(200, 150, 20)
+    }},
+    NEON = {name = "💜 Neon", colors = {
+        Color3.fromRGB(150, 20, 200), Color3.fromRGB(200, 50, 255),
+        Color3.fromRGB(150, 20, 200), Color3.fromRGB(100, 10, 150),
+        Color3.fromRGB(150, 20, 200)
+    }},
+    CYBER = {name = "💠 Cyber", colors = {
+        Color3.fromRGB(0, 100, 200), Color3.fromRGB(0, 200, 255),
+        Color3.fromRGB(0, 100, 200), Color3.fromRGB(0, 50, 150),
+        Color3.fromRGB(0, 100, 200)
+    }},
+    CRIMSON = {name = "❤️ Crimson", colors = {
+        Color3.fromRGB(200, 20, 20), Color3.fromRGB(255, 50, 50),
+        Color3.fromRGB(200, 20, 20), Color3.fromRGB(150, 10, 10),
+        Color3.fromRGB(200, 20, 20)
+    }},
+    EMERALD = {name = "💚 Emerald", colors = {
+        Color3.fromRGB(20, 200, 60), Color3.fromRGB(50, 255, 100),
+        Color3.fromRGB(20, 200, 60), Color3.fromRGB(10, 150, 40),
+        Color3.fromRGB(20, 200, 60)
+    }},
+    OCEAN = {name = "🌊 Ocean", colors = {
+        Color3.fromRGB(20, 80, 200), Color3.fromRGB(50, 150, 255),
+        Color3.fromRGB(20, 80, 200), Color3.fromRGB(10, 50, 150),
+        Color3.fromRGB(20, 80, 200)
+    }},
+    SUNSET = {name = "🌅 Sunset", colors = {
+        Color3.fromRGB(200, 80, 20), Color3.fromRGB(255, 150, 50),
+        Color3.fromRGB(200, 80, 20), Color3.fromRGB(150, 50, 10),
+        Color3.fromRGB(200, 80, 20)
+    }},
+    PLATINUM = {name = "⚪ Platinum", colors = {
+        Color3.fromRGB(120, 120, 160), Color3.fromRGB(200, 200, 220),
+        Color3.fromRGB(120, 120, 160), Color3.fromRGB(80, 80, 120),
+        Color3.fromRGB(120, 120, 160)
+    }},
+    ICE = {name = "❄️ Ice", colors = {
+        Color3.fromRGB(80, 180, 220), Color3.fromRGB(150, 220, 255),
+        Color3.fromRGB(80, 180, 220), Color3.fromRGB(40, 120, 180),
+        Color3.fromRGB(80, 180, 220)
+    }},
+    LAVA = {name = "🌋 Lava", colors = {
+        Color3.fromRGB(200, 50, 0), Color3.fromRGB(255, 100, 20),
+        Color3.fromRGB(200, 50, 0), Color3.fromRGB(150, 30, 0),
+        Color3.fromRGB(200, 50, 0)
+    }},
+    DARK = {name = "🌑 Dark", colors = {
+        Color3.fromRGB(50, 50, 70), Color3.fromRGB(100, 100, 120),
+        Color3.fromRGB(50, 50, 70), Color3.fromRGB(30, 30, 50),
+        Color3.fromRGB(50, 50, 70)
+    }},
+    NEON_PURPLE = {name = "💜 Electric Purple", colors = {
+        Color3.fromRGB(157, 0, 255), Color3.fromRGB(120, 0, 200),
+        Color3.fromRGB(80, 0, 150), Color3.fromRGB(46, 10, 78),
+        Color3.fromRGB(157, 0, 255)
+    }},
+    MONOCHROME = {name = "⚫ Monochrome", colors = {
+        Color3.fromRGB(255, 255, 255), Color3.fromRGB(169, 169, 169),
+        Color3.fromRGB(100, 100, 100), Color3.fromRGB(30, 30, 30),
+        Color3.fromRGB(255, 255, 255)
+    }},
+    COSMIC_RED = {name = "❤️ Cosmic Red", colors = {
+        Color3.fromRGB(255, 0, 60), Color3.fromRGB(200, 0, 50),
+        Color3.fromRGB(128, 0, 32), Color3.fromRGB(26, 0, 10),
+        Color3.fromRGB(255, 0, 60)
+    }},
+    COSMIC_BLUE = {name = "💙 Cosmic Blue", colors = {
+        Color3.fromRGB(0, 102, 255), Color3.fromRGB(0, 70, 200),
+        Color3.fromRGB(0, 26, 102), Color3.fromRGB(0, 11, 51),
+        Color3.fromRGB(0, 102, 255)
+    }},
+    NEON_PINK = {name = "💗 Neon Pink", colors = {
+        Color3.fromRGB(255, 0, 85), Color3.fromRGB(204, 0, 51),
+        Color3.fromRGB(150, 0, 38), Color3.fromRGB(102, 0, 26),
+        Color3.fromRGB(255, 0, 85)
+    }},
+    GHOST_BLUE = {name = "👻 Ghost Blue", colors = {
+        Color3.fromRGB(224, 255, 255), Color3.fromRGB(150, 200, 220),
+        Color3.fromRGB(95, 158, 160), Color3.fromRGB(0, 16, 24),
+        Color3.fromRGB(224, 255, 255)
+    }},
+    PURPLE_GRADIENT = {name = "💜 Purple Gradient", colors = {
+        Color3.fromRGB(209, 143, 255), Color3.fromRGB(150, 100, 200),
+        Color3.fromRGB(123, 47, 190), Color3.fromRGB(46, 10, 78),
+        Color3.fromRGB(209, 143, 255)
+    }},
+    AMETHYST = {name = "💎 Amethyst", colors = {
+        Color3.fromRGB(200, 150, 255), Color3.fromRGB(160, 100, 220),
+        Color3.fromRGB(120, 60, 180), Color3.fromRGB(80, 30, 120),
+        Color3.fromRGB(200, 150, 255)
+    }},
+    SLATE = {name = "🗻 Slate Gray", colors = {
+        Color3.fromRGB(200, 200, 210), Color3.fromRGB(169, 169, 169),
+        Color3.fromRGB(120, 120, 130), Color3.fromRGB(60, 60, 70),
+        Color3.fromRGB(200, 200, 210)
+    }},
+    MIDNIGHT = {name = "🌙 Midnight Blue", colors = {
+        Color3.fromRGB(80, 150, 255), Color3.fromRGB(50, 100, 200),
+        Color3.fromRGB(20, 50, 120), Color3.fromRGB(0, 10, 30),
+        Color3.fromRGB(80, 150, 255)
+    }},
+    OVERDRIVE = {name = "⚡ Overdrive", colors = {
+        Color3.fromRGB(120, 80, 255), Color3.fromRGB(80, 60, 180),
+        Color3.fromRGB(180, 150, 255), Color3.fromRGB(40, 30, 100),
+        Color3.fromRGB(120, 80, 255)
+    }},
+    STEALTH = {name = "🥷 Stealth", colors = {
+        Color3.fromRGB(20, 20, 25), Color3.fromRGB(40, 40, 50),
+        Color3.fromRGB(60, 60, 75), Color3.fromRGB(15, 15, 20),
+        Color3.fromRGB(20, 20, 25)
+    }}
 }
+
+-- ═══════════════════════════════════════════════════════════
+-- ЦВЕТА GUI (основные)
+-- ═══════════════════════════════════════════════════════════
+
+local function GetColors()
+    local preset = COLOR_PRESETS[_G.Menu.CurrentColor or "OVERDRIVE"]
+    if not preset then preset = COLOR_PRESETS.OVERDRIVE end
+    
+    return {
+        bg = Color3.fromRGB(10, 8, 20),
+        bgSecondary = Color3.fromRGB(20, 16, 35),
+        bgHover = Color3.fromRGB(40, 30, 60),
+        border = preset.colors[1] or Color3.fromRGB(80, 60, 180),
+        accent = preset.colors[3] or Color3.fromRGB(120, 80, 255),
+        accentLight = preset.colors[2] or Color3.fromRGB(180, 150, 255),
+        text = Color3.fromRGB(200, 190, 220),
+        textDim = Color3.fromRGB(150, 140, 170),
+        textBright = Color3.fromRGB(255, 255, 255),
+        success = Color3.fromRGB(80, 255, 150),
+        warning = Color3.fromRGB(255, 200, 80),
+        danger = Color3.fromRGB(255, 80, 80),
+        gradient = preset.colors
+    }
+end
+
+_G.Menu.CurrentColor = "OVERDRIVE"
 
 -- ═══════════════════════════════════════════════════════════
 -- GUI
@@ -60,10 +198,10 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local OpenButton = Instance.new("ImageButton")
 OpenButton.Size = UDim2.new(0, 55, 0, 55)
 OpenButton.Position = UDim2.new(0.02, 0, 0.86, 0)
-OpenButton.BackgroundColor3 = COLORS.bgSecondary
+OpenButton.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
 OpenButton.BackgroundTransparency = 0.1
 OpenButton.Image = "rbxassetid://6031091071"
-OpenButton.ImageColor3 = COLORS.accent
+OpenButton.ImageColor3 = Color3.fromRGB(120, 80, 255)
 OpenButton.ScaleType = Enum.ScaleType.Fit
 OpenButton.Parent = ScreenGui
 
@@ -72,7 +210,7 @@ OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
 local OpenStroke = Instance.new("UIStroke")
-OpenStroke.Color = COLORS.border
+OpenStroke.Color = Color3.fromRGB(80, 60, 180)
 OpenStroke.Thickness = 2
 OpenStroke.Transparency = 0.3
 OpenStroke.Parent = OpenButton
@@ -81,7 +219,7 @@ local OpenLabel = Instance.new("TextLabel")
 OpenLabel.Size = UDim2.new(1, 0, 1, 0)
 OpenLabel.BackgroundTransparency = 1
 OpenLabel.Text = "⚡"
-OpenLabel.TextColor3 = COLORS.accent
+OpenLabel.TextColor3 = Color3.fromRGB(120, 80, 255)
 OpenLabel.TextSize = 26
 OpenLabel.Font = Enum.Font.Jura
 OpenLabel.Parent = OpenButton
@@ -91,9 +229,9 @@ OpenLabel.Parent = OpenButton
 -- ═══════════════════════════════════════════════════════════
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0.85, 0, 0.80, 0) -- Ширина 85%, высота 80%
-MainFrame.Position = UDim2.new(0.075, 0, 0.10, 0) -- Центрирование
-MainFrame.BackgroundColor3 = COLORS.bg
+MainFrame.Size = UDim2.new(0.85, 0, 0.80, 0)
+MainFrame.Position = UDim2.new(0.075, 0, 0.10, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 8, 20)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -106,19 +244,18 @@ Corner.CornerRadius = UDim.new(0, 12)
 Corner.Parent = MainFrame
 
 local Stroke = Instance.new("UIStroke")
-Stroke.Color = COLORS.border
+Stroke.Color = Color3.fromRGB(80, 60, 180)
 Stroke.Thickness = 2
 Stroke.Transparency = 0.2
 Stroke.Parent = MainFrame
 
--- Градиент для обводки
 local StrokeGradient = Instance.new("UIGradient")
 StrokeGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, COLORS.border),
-    ColorSequenceKeypoint.new(0.3, COLORS.accent),
-    ColorSequenceKeypoint.new(0.6, COLORS.border),
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 60, 180)),
+    ColorSequenceKeypoint.new(0.3, Color3.fromRGB(120, 80, 255)),
+    ColorSequenceKeypoint.new(0.6, Color3.fromRGB(80, 60, 180)),
     ColorSequenceKeypoint.new(0.8, Color3.fromRGB(60, 40, 140)),
-    ColorSequenceKeypoint.new(1, COLORS.border)
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 60, 180))
 })
 StrokeGradient.Parent = Stroke
 
@@ -128,7 +265,7 @@ StrokeGradient.Parent = Stroke
 
 local TitleFrame = Instance.new("Frame")
 TitleFrame.Size = UDim2.new(1, 0, 0, 50)
-TitleFrame.BackgroundColor3 = COLORS.bgSecondary
+TitleFrame.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
 TitleFrame.BackgroundTransparency = 0.2
 TitleFrame.BorderSizePixel = 0
 TitleFrame.Parent = MainFrame
@@ -137,37 +274,34 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 12)
 TitleCorner.Parent = TitleFrame
 
--- Заголовок
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
 TitleLabel.Position = UDim2.new(0.03, 0, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "⚡ OMEGA ULTIMATE"
-TitleLabel.TextColor3 = COLORS.accentLight
+TitleLabel.TextColor3 = Color3.fromRGB(180, 150, 255)
 TitleLabel.TextSize = 20
 TitleLabel.Font = Enum.Font.Jura
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleFrame
 
--- Версия
 local VersionLabel = Instance.new("TextLabel")
 VersionLabel.Size = UDim2.new(0.2, 0, 1, 0)
 VersionLabel.Position = UDim2.new(0.75, 0, 0, 0)
 VersionLabel.BackgroundTransparency = 1
 VersionLabel.Text = "v5.3"
-VersionLabel.TextColor3 = COLORS.textDim
+VersionLabel.TextColor3 = Color3.fromRGB(150, 140, 170)
 VersionLabel.TextSize = 14
 VersionLabel.Font = Enum.Font.Jura
 VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
 VersionLabel.Parent = TitleFrame
 
--- Кнопка закрытия
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 40, 0, 40)
 CloseBtn.Position = UDim2.new(1, -45, 0, 5)
 CloseBtn.BackgroundTransparency = 1
 CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = COLORS.textDim
+CloseBtn.TextColor3 = Color3.fromRGB(150, 140, 170)
 CloseBtn.TextSize = 20
 CloseBtn.Font = Enum.Font.Jura
 CloseBtn.Parent = TitleFrame
@@ -179,7 +313,7 @@ CloseBtn.Parent = TitleFrame
 local StatusFrame = Instance.new("Frame")
 StatusFrame.Size = UDim2.new(1, 0, 0, 30)
 StatusFrame.Position = UDim2.new(0, 0, 0, 50)
-StatusFrame.BackgroundColor3 = COLORS.bgSecondary
+StatusFrame.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
 StatusFrame.BackgroundTransparency = 0.5
 StatusFrame.BorderSizePixel = 0
 StatusFrame.Parent = MainFrame
@@ -189,34 +323,34 @@ StatusLabel.Size = UDim2.new(1, -20, 1, 0)
 StatusLabel.Position = UDim2.new(0.02, 0, 0, 0)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "● ONLINE | Players: 0 | Ping: 0ms"
-StatusLabel.TextColor3 = COLORS.success
+StatusLabel.TextColor3 = Color3.fromRGB(80, 255, 150)
 StatusLabel.TextSize = 13
 StatusLabel.Font = Enum.Font.Jura
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Parent = StatusFrame
 
 -- ═══════════════════════════════════════════════════════════
--- КОНТЕЙНЕРЫ (РАСШИРЕННЫЕ)
+-- КОНТЕЙНЕРЫ
 -- ═══════════════════════════════════════════════════════════
 
 local CategoryContainer = Instance.new("ScrollingFrame")
-CategoryContainer.Size = UDim2.new(0, 150, 1, -80) -- Категории шире
+CategoryContainer.Size = UDim2.new(0, 150, 1, -80)
 CategoryContainer.Position = UDim2.new(0, 0, 0, 80)
 CategoryContainer.BackgroundTransparency = 1
 CategoryContainer.BorderSizePixel = 0
 CategoryContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 CategoryContainer.ScrollBarThickness = 3
-CategoryContainer.ScrollBarImageColor3 = COLORS.border
+CategoryContainer.ScrollBarImageColor3 = Color3.fromRGB(80, 60, 180)
 CategoryContainer.Parent = MainFrame
 
 local FunctionContainer = Instance.new("ScrollingFrame")
-FunctionContainer.Size = UDim2.new(1, -155, 1, -80) -- Контент шире
+FunctionContainer.Size = UDim2.new(1, -155, 1, -80)
 FunctionContainer.Position = UDim2.new(0, 155, 0, 80)
 FunctionContainer.BackgroundTransparency = 1
 FunctionContainer.BorderSizePixel = 0
 FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 FunctionContainer.ScrollBarThickness = 4
-FunctionContainer.ScrollBarImageColor3 = COLORS.border
+FunctionContainer.ScrollBarImageColor3 = Color3.fromRGB(80, 60, 180)
 FunctionContainer.Parent = MainFrame
 
 -- ═══════════════════════════════════════════════════════════
@@ -263,7 +397,7 @@ local function CreateCategoryButton(name, parent)
     btn.Position = UDim2.new(0, 2, 0, #parent:GetChildren() * 43 + 5)
     btn.BackgroundTransparency = 1
     btn.Text = name
-    btn.TextColor3 = COLORS.textDim
+    btn.TextColor3 = Color3.fromRGB(150, 140, 170)
     btn.TextSize = 14
     btn.Font = Enum.Font.Jura
     btn.TextXAlignment = Enum.TextXAlignment.Left
@@ -278,15 +412,16 @@ local function CreateCategoryButton(name, parent)
     parent.CanvasSize = UDim2.new(0, 0, 0, #parent:GetChildren() * 43 + 10)
     
     btn.Activated:Connect(function()
+        local colors = GetColors()
         for _, child in ipairs(parent:GetChildren()) do
             if child:IsA("TextButton") then
                 child.BackgroundTransparency = 1
-                child.TextColor3 = COLORS.textDim
+                child.TextColor3 = colors.textDim
             end
         end
         btn.BackgroundTransparency = 0.9
-        btn.BackgroundColor3 = COLORS.bgHover
-        btn.TextColor3 = COLORS.accentLight
+        btn.BackgroundColor3 = colors.bgHover
+        btn.TextColor3 = colors.accentLight
         
         for _, child in ipairs(FunctionContainer:GetChildren()) do
             if child:IsA("Frame") and child ~= container then
@@ -339,7 +474,7 @@ function _G.Menu:AddLabel(text, category)
     label.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = COLORS.textDim
+    label.TextColor3 = Color3.fromRGB(150, 140, 170)
     label.TextSize = 13
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -356,7 +491,7 @@ function _G.Menu:AddSeparator(category)
     local sep = Instance.new("Frame")
     sep.Size = UDim2.new(1, -10, 0, 1)
     sep.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
-    sep.BackgroundColor3 = COLORS.border
+    sep.BackgroundColor3 = Color3.fromRGB(80, 60, 180)
     sep.BackgroundTransparency = 0.3
     sep.Parent = parent
     UpdateContainerSize(parent)
@@ -379,7 +514,7 @@ function _G.Menu:AddToggle(text, callback, category)
     label.Size = UDim2.new(0.7, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = COLORS.text
+    label.TextColor3 = Color3.fromRGB(200, 190, 220)
     label.TextSize = 14
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -388,9 +523,9 @@ function _G.Menu:AddToggle(text, callback, category)
     local toggle = Instance.new("TextButton")
     toggle.Size = UDim2.new(0, 65, 0, 30)
     toggle.Position = UDim2.new(1, -70, 0.5, -15)
-    toggle.BackgroundColor3 = COLORS.bgSecondary
+    toggle.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
     toggle.Text = "OFF"
-    toggle.TextColor3 = COLORS.textDim
+    toggle.TextColor3 = Color3.fromRGB(150, 140, 170)
     toggle.TextSize = 12
     toggle.Font = Enum.Font.Jura
     toggle.Parent = container
@@ -402,15 +537,16 @@ function _G.Menu:AddToggle(text, callback, category)
     local state = false
     
     toggle.Activated:Connect(function()
+        local colors = GetColors()
         state = not state
         if state then
-            toggle.BackgroundColor3 = COLORS.accent
+            toggle.BackgroundColor3 = colors.accent
             toggle.Text = "ON"
-            toggle.TextColor3 = COLORS.textBright
+            toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
         else
-            toggle.BackgroundColor3 = COLORS.bgSecondary
+            toggle.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
             toggle.Text = "OFF"
-            toggle.TextColor3 = COLORS.textDim
+            toggle.TextColor3 = Color3.fromRGB(150, 140, 170)
         end
         if callback then callback(state) end
     end)
@@ -428,10 +564,10 @@ function _G.Menu:AddButton(text, callback, category)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -10, 0, 40)
     btn.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
-    btn.BackgroundColor3 = COLORS.bgSecondary
+    btn.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
     btn.BackgroundTransparency = 0.3
     btn.Text = text
-    btn.TextColor3 = COLORS.text
+    btn.TextColor3 = Color3.fromRGB(200, 190, 220)
     btn.TextSize = 14
     btn.Font = Enum.Font.Jura
     btn.Parent = parent
@@ -464,7 +600,7 @@ function _G.Menu:AddSlider(text, min, max, default, callback, category)
     label.Size = UDim2.new(1, 0, 0, 22)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. tostring(default)
-    label.TextColor3 = COLORS.text
+    label.TextColor3 = Color3.fromRGB(200, 190, 220)
     label.TextSize = 14
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -473,7 +609,7 @@ function _G.Menu:AddSlider(text, min, max, default, callback, category)
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Size = UDim2.new(1, 0, 0, 22)
     sliderFrame.Position = UDim2.new(0, 0, 0, 24)
-    sliderFrame.BackgroundColor3 = COLORS.bgSecondary
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
     sliderFrame.Parent = container
     
     local sliderCorner = Instance.new("UICorner")
@@ -482,7 +618,7 @@ function _G.Menu:AddSlider(text, min, max, default, callback, category)
     
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = COLORS.accent
+    fill.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
     fill.Parent = sliderFrame
     
     local fillCorner = Instance.new("UICorner")
@@ -543,7 +679,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     label.Size = UDim2.new(0.35, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = COLORS.text
+    label.TextColor3 = Color3.fromRGB(200, 190, 220)
     label.TextSize = 14
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -552,10 +688,10 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     local dropdown = Instance.new("TextButton")
     dropdown.Size = UDim2.new(0.6, 0, 1, 0)
     dropdown.Position = UDim2.new(0.4, 0, 0, 0)
-    dropdown.BackgroundColor3 = COLORS.bgSecondary
+    dropdown.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
     dropdown.BackgroundTransparency = 0.3
     dropdown.Text = options[1] or "Select"
-    dropdown.TextColor3 = COLORS.text
+    dropdown.TextColor3 = Color3.fromRGB(200, 190, 220)
     dropdown.TextSize = 13
     dropdown.Font = Enum.Font.Jura
     dropdown.Parent = container
@@ -577,7 +713,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
         dropList = Instance.new("Frame")
         dropList.Size = UDim2.new(0.6, 0, 0, #options * 28)
         dropList.Position = UDim2.new(0.4, 0, 1, 2)
-        dropList.BackgroundColor3 = COLORS.bgSecondary
+        dropList.BackgroundColor3 = Color3.fromRGB(20, 16, 35)
         dropList.BackgroundTransparency = 0.1
         dropList.ClipsDescendants = true
         dropList.Parent = container
@@ -592,7 +728,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
             btn.Position = UDim2.new(0, 0, 0, (i-1) * 28)
             btn.BackgroundTransparency = 1
             btn.Text = option
-            btn.TextColor3 = COLORS.text
+            btn.TextColor3 = Color3.fromRGB(200, 190, 220)
             btn.TextSize = 13
             btn.Font = Enum.Font.Jura
             btn.Parent = dropList
@@ -610,6 +746,105 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     
     UpdateContainerSize(parent)
     return container
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- ФУНКЦИЯ ВЫБОРА ЦВЕТОВ (КОМПАКТНАЯ)
+-- ═══════════════════════════════════════════════════════════
+
+local function AddColorPicker(menu, category)
+    -- Собираем названия для дропдауна
+    local colorNames = {}
+    local colorKeys = {}
+    for key, preset in pairs(COLOR_PRESETS) do
+        table.insert(colorNames, preset.name)
+        table.insert(colorKeys, key)
+    end
+    
+    -- Функция применения цвета
+    local function ApplyColors(colorKey)
+        local preset = COLOR_PRESETS[colorKey]
+        if not preset then return end
+        _G.Menu.CurrentColor = colorKey
+        
+        -- Обновляем обводку
+        if Stroke then
+            Stroke.Color = preset.colors[1]
+        end
+        if StrokeGradient then
+            local seq = {}
+            for i, color in ipairs(preset.colors) do
+                table.insert(seq, ColorSequenceKeypoint.new((i-1)/(#preset.colors-1), color))
+            end
+            StrokeGradient.Color = ColorSequence.new(seq)
+        end
+        
+        -- Обновляем цвет кнопки
+        if OpenButton then
+            OpenButton.ImageColor3 = preset.colors[3] or preset.colors[1]
+            OpenLabel.TextColor3 = preset.colors[3] or preset.colors[1]
+            if OpenStroke then
+                OpenStroke.Color = preset.colors[1]
+            end
+        end
+        
+        -- Обновляем заголовок
+        if TitleLabel then
+            TitleLabel.TextColor3 = preset.colors[2] or preset.colors[3]
+        end
+        
+        -- Обновляем статус
+        if StatusLabel then
+            StatusLabel.TextColor3 = preset.colors[3] or Color3.fromRGB(80, 255, 150)
+        end
+        
+        print("[COLOR] Applied: " .. preset.name)
+        
+        -- Вызываем колбэк если есть
+        if _G.OnColorChange then
+            _G.OnColorChange(preset)
+        end
+    end
+    
+    -- Добавляем дропдаун в меню
+    menu:AddDropdown("🎨 Цвет GUI", colorNames, function(selected)
+        for i, name in ipairs(colorNames) do
+            if name == selected then
+                ApplyColors(colorKeys[i])
+                break
+            end
+        end
+    end, category)
+    
+    -- Добавляем кнопку сброса
+    menu:AddButton("↺ Сбросить цвет", function()
+        ApplyColors("OVERDRIVE")
+        -- Обновляем дропдаун текст
+        for _, child in ipairs(FunctionContainer:GetDescendants()) do
+            if child:IsA("TextButton") and child.Text == "🎨 Цвет GUI" then
+                -- Находим соседний дропдаун
+                local parent = child.Parent
+                if parent then
+                    for _, btn in ipairs(parent:GetDescendants()) do
+                        if btn:IsA("TextButton") and btn ~= child and btn.Text ~= "↺ Сбросить цвет" then
+                            btn.Text = "⚡ Overdrive"
+                            break
+                        end
+                    end
+                end
+                break
+            end
+        end
+    end, category)
+    
+    -- Применяем цвет по умолчанию
+    ApplyColors("OVERDRIVE")
+    
+    return {
+        Apply = ApplyColors,
+        GetCurrent = function() return _G.Menu.CurrentColor end,
+        GetPreset = function() return COLOR_PRESETS[_G.Menu.CurrentColor] end
+    }
 end
 
 -- ═══════════════════════════════════════════════════════════
@@ -654,21 +889,24 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════
--- ИНИЦИАЛИЗАЦИЯ
+-- ИНИЦИАЛИЗАЦИЯ КАТЕГОРИЙ И ФУНКЦИЙ
 -- ═══════════════════════════════════════════════════════════
 
+-- Создаем категории
 _G.Menu:AddCategory("⚡ Основные")
 _G.Menu:AddCategory("🎯 Цели")
 _G.Menu:AddCategory("⚙️ Настройки")
+_G.Menu:AddCategory("🎨 Цвета")
 _G.Menu:AddCategory("📊 Инфо")
 _G.Menu:AddCategory("🔧 Дополнительно")
 
+-- Информация
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 _G.Menu:AddLabel("OMEGA ULTIMATE v5.3", "📊 Инфо")
-_G.Menu:AddLabel("📱 Широкое меню", "📊 Инфо")
+_G.Menu:AddLabel("📱 Полная версия с цветами", "📊 Инфо")
 _G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 
--- ДЕМО-ФУНКЦИИ
+-- Основные функции
 _G.Menu:AddToggle("Включить скрипт", function(state)
     print("Скрипт: " .. (state and "ВКЛ" or "ВЫКЛ"))
 end, "⚡ Основные")
@@ -681,6 +919,7 @@ _G.Menu:AddButton("Обновить цель", function()
     print("Цель обновлена!")
 end, "🎯 Цели")
 
+-- Настройки
 _G.Menu:AddSeparator("⚙️ Настройки")
 _G.Menu:AddSlider("Дистанция", 50, 400, 200, function(v)
     print("Дистанция: " .. v)
@@ -690,12 +929,16 @@ _G.Menu:AddDropdown("Режим цели", {"Ближайший", "Самый д
     print("Режим: " .. s)
 end, "⚙️ Настройки")
 
+-- ДОБАВЛЯЕМ ВЫБОР ЦВЕТОВ (КОМПАКТНО)
+_G.Menu.ColorPicker = AddColorPicker(_G.Menu, "🎨 Цвета")
+
+-- Дополнительные функции
 _G.Menu:AddButton("Тест", function()
     print("Кнопка нажата!")
 end, "🔧 Дополнительно")
 
 print("════════════════════════════════════════════════════════")
-print("⚡ OMEGA MENU v5.3 - ШИРОКОЕ МЕНЮ")
-print("📱 Размер: 85% ширины экрана")
-print("🎨 Стиль как на вашем скриншоте")
+print("⚡ OMEGA MENU v5.3 - ПОЛНАЯ ВЕРСИЯ")
+print("📱 24 цвета GUI")
+print("🎨 Компактный выбор цветов")
 print("════════════════════════════════════════════════════════")
