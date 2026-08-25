@@ -1,12 +1,11 @@
 --[[
     ═══════════════════════════════════════════════════════════
-    🔥 OMEGA ULTIMATE v5.3 - СТИЛЬ OVERDRIVE 🔥
+    🔥 OMEGA ULTIMATE v5.3 - ШИРОКОЕ МЕНЮ 🔥
     ═══════════════════════════════════════════════════════════
-    СТИЛЬ:
+    РАЗМЕРЫ:
+    • Ширина: 85% экрана
+    • Высота: 80% экрана
     • Как на вашем скриншоте
-    • Сине-фиолетовая тема
-    • Акцентные элементы
-    • Кнопка открытия в стиле
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -55,7 +54,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ═══════════════════════════════════════════════════════════
--- КНОПКА ОТКРЫТИЯ (В СТИЛЕ OVERDRIVE)
+-- КНОПКА ОТКРЫТИЯ
 -- ═══════════════════════════════════════════════════════════
 
 local OpenButton = Instance.new("ImageButton")
@@ -88,12 +87,12 @@ OpenLabel.Font = Enum.Font.Jura
 OpenLabel.Parent = OpenButton
 
 -- ═══════════════════════════════════════════════════════════
--- ГЛАВНОЕ МЕНЮ (СТИЛЬ OVERDRIVE)
+-- ГЛАВНОЕ МЕНЮ (ШИРОКОЕ - 85% ЭКРАНА)
 -- ═══════════════════════════════════════════════════════════
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 480)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -240)
+MainFrame.Size = UDim2.new(0.85, 0, 0.80, 0) -- Ширина 85%, высота 80%
+MainFrame.Position = UDim2.new(0.075, 0, 0.10, 0) -- Центрирование
 MainFrame.BackgroundColor3 = COLORS.bg
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
@@ -141,35 +140,35 @@ TitleCorner.Parent = TitleFrame
 -- Заголовок
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
-TitleLabel.Position = UDim2.new(0.05, 0, 0, 0)
+TitleLabel.Position = UDim2.new(0.03, 0, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "⚡ OMEGA ULTIMATE"
 TitleLabel.TextColor3 = COLORS.accentLight
-TitleLabel.TextSize = 18
+TitleLabel.TextSize = 20
 TitleLabel.Font = Enum.Font.Jura
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleFrame
 
 -- Версия
 local VersionLabel = Instance.new("TextLabel")
-VersionLabel.Size = UDim2.new(0.3, 0, 1, 0)
-VersionLabel.Position = UDim2.new(0.05, 0, 0, 0)
+VersionLabel.Size = UDim2.new(0.2, 0, 1, 0)
+VersionLabel.Position = UDim2.new(0.75, 0, 0, 0)
 VersionLabel.BackgroundTransparency = 1
 VersionLabel.Text = "v5.3"
 VersionLabel.TextColor3 = COLORS.textDim
-VersionLabel.TextSize = 12
+VersionLabel.TextSize = 14
 VersionLabel.Font = Enum.Font.Jura
 VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
 VersionLabel.Parent = TitleFrame
 
 -- Кнопка закрытия
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 35, 0, 35)
-CloseBtn.Position = UDim2.new(1, -42, 0, 7)
+CloseBtn.Size = UDim2.new(0, 40, 0, 40)
+CloseBtn.Position = UDim2.new(1, -45, 0, 5)
 CloseBtn.BackgroundTransparency = 1
 CloseBtn.Text = "✕"
 CloseBtn.TextColor3 = COLORS.textDim
-CloseBtn.TextSize = 18
+CloseBtn.TextSize = 20
 CloseBtn.Font = Enum.Font.Jura
 CloseBtn.Parent = TitleFrame
 
@@ -191,32 +190,32 @@ StatusLabel.Position = UDim2.new(0.02, 0, 0, 0)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "● ONLINE | Players: 0 | Ping: 0ms"
 StatusLabel.TextColor3 = COLORS.success
-StatusLabel.TextSize = 11
+StatusLabel.TextSize = 13
 StatusLabel.Font = Enum.Font.Jura
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Parent = StatusFrame
 
 -- ═══════════════════════════════════════════════════════════
--- КОНТЕЙНЕРЫ
+-- КОНТЕЙНЕРЫ (РАСШИРЕННЫЕ)
 -- ═══════════════════════════════════════════════════════════
 
 local CategoryContainer = Instance.new("ScrollingFrame")
-CategoryContainer.Size = UDim2.new(0, 130, 1, -80)
+CategoryContainer.Size = UDim2.new(0, 150, 1, -80) -- Категории шире
 CategoryContainer.Position = UDim2.new(0, 0, 0, 80)
 CategoryContainer.BackgroundTransparency = 1
 CategoryContainer.BorderSizePixel = 0
 CategoryContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-CategoryContainer.ScrollBarThickness = 2
+CategoryContainer.ScrollBarThickness = 3
 CategoryContainer.ScrollBarImageColor3 = COLORS.border
 CategoryContainer.Parent = MainFrame
 
 local FunctionContainer = Instance.new("ScrollingFrame")
-FunctionContainer.Size = UDim2.new(1, -135, 1, -80)
-FunctionContainer.Position = UDim2.new(0, 135, 0, 80)
+FunctionContainer.Size = UDim2.new(1, -155, 1, -80) -- Контент шире
+FunctionContainer.Position = UDim2.new(0, 155, 0, 80)
 FunctionContainer.BackgroundTransparency = 1
 FunctionContainer.BorderSizePixel = 0
 FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-FunctionContainer.ScrollBarThickness = 3
+FunctionContainer.ScrollBarThickness = 4
 FunctionContainer.ScrollBarImageColor3 = COLORS.border
 FunctionContainer.Parent = MainFrame
 
@@ -260,12 +259,12 @@ end)
 
 local function CreateCategoryButton(name, parent)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -5, 0, 35)
-    btn.Position = UDim2.new(0, 2, 0, #parent:GetChildren() * 38 + 5)
+    btn.Size = UDim2.new(1, -5, 0, 40)
+    btn.Position = UDim2.new(0, 2, 0, #parent:GetChildren() * 43 + 5)
     btn.BackgroundTransparency = 1
     btn.Text = name
     btn.TextColor3 = COLORS.textDim
-    btn.TextSize = 12
+    btn.TextSize = 14
     btn.Font = Enum.Font.Jura
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = parent
@@ -276,7 +275,7 @@ local function CreateCategoryButton(name, parent)
     container.Visible = false
     container.Parent = FunctionContainer
     
-    parent.CanvasSize = UDim2.new(0, 0, 0, #parent:GetChildren() * 38 + 10)
+    parent.CanvasSize = UDim2.new(0, 0, 0, #parent:GetChildren() * 43 + 10)
     
     btn.Activated:Connect(function()
         for _, child in ipairs(parent:GetChildren()) do
@@ -302,7 +301,7 @@ local function CreateCategoryButton(name, parent)
                 count = count + 1
             end
         end
-        FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, count * 35 + 10)
+        FunctionContainer.CanvasSize = UDim2.new(0, 0, 0, count * 40 + 10)
     end)
     
     if #parent:GetChildren() == 1 then
@@ -320,7 +319,7 @@ local function UpdateContainerSize(parent)
         end
     end
     if parent.Parent and parent.Parent:IsA("ScrollingFrame") then
-        parent.Parent.CanvasSize = UDim2.new(0, 0, 0, count * 35 + 10)
+        parent.Parent.CanvasSize = UDim2.new(0, 0, 0, count * 40 + 10)
     end
 end
 
@@ -336,12 +335,12 @@ function _G.Menu:AddLabel(text, category)
         parent = self:AddCategory(category)
     end
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 0, 25)
-    label.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
+    label.Size = UDim2.new(1, -10, 0, 30)
+    label.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = COLORS.textDim
-    label.TextSize = 12
+    label.TextSize = 13
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = parent
@@ -356,7 +355,7 @@ function _G.Menu:AddSeparator(category)
     end
     local sep = Instance.new("Frame")
     sep.Size = UDim2.new(1, -10, 0, 1)
-    sep.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
+    sep.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
     sep.BackgroundColor3 = COLORS.border
     sep.BackgroundTransparency = 0.3
     sep.Parent = parent
@@ -371,28 +370,28 @@ function _G.Menu:AddToggle(text, callback, category)
     end
     
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -10, 0, 35)
-    container.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
+    container.Size = UDim2.new(1, -10, 0, 40)
+    container.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.65, 0, 1, 0)
+    label.Size = UDim2.new(0.7, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = COLORS.text
-    label.TextSize = 12
+    label.TextSize = 14
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = container
     
     local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(0, 55, 0, 25)
-    toggle.Position = UDim2.new(1, -60, 0.5, -12.5)
+    toggle.Size = UDim2.new(0, 65, 0, 30)
+    toggle.Position = UDim2.new(1, -70, 0.5, -15)
     toggle.BackgroundColor3 = COLORS.bgSecondary
     toggle.Text = "OFF"
     toggle.TextColor3 = COLORS.textDim
-    toggle.TextSize = 11
+    toggle.TextSize = 12
     toggle.Font = Enum.Font.Jura
     toggle.Parent = container
     
@@ -427,13 +426,13 @@ function _G.Menu:AddButton(text, callback, category)
     end
     
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 35)
-    btn.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
+    btn.Size = UDim2.new(1, -10, 0, 40)
+    btn.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
     btn.BackgroundColor3 = COLORS.bgSecondary
     btn.BackgroundTransparency = 0.3
     btn.Text = text
     btn.TextColor3 = COLORS.text
-    btn.TextSize = 12
+    btn.TextSize = 14
     btn.Font = Enum.Font.Jura
     btn.Parent = parent
     
@@ -456,24 +455,24 @@ function _G.Menu:AddSlider(text, min, max, default, callback, category)
     end
     
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -10, 0, 50)
-    container.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
+    container.Size = UDim2.new(1, -10, 0, 55)
+    container.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(1, 0, 0, 22)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. tostring(default)
     label.TextColor3 = COLORS.text
-    label.TextSize = 12
+    label.TextSize = 14
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = container
     
     local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = UDim2.new(1, 0, 0, 20)
-    sliderFrame.Position = UDim2.new(0, 0, 0, 22)
+    sliderFrame.Size = UDim2.new(1, 0, 0, 22)
+    sliderFrame.Position = UDim2.new(0, 0, 0, 24)
     sliderFrame.BackgroundColor3 = COLORS.bgSecondary
     sliderFrame.Parent = container
     
@@ -535,8 +534,8 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     end
     
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -10, 0, 40)
-    container.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 35 + 5)
+    container.Size = UDim2.new(1, -10, 0, 45)
+    container.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40 + 5)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
@@ -545,7 +544,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = COLORS.text
-    label.TextSize = 12
+    label.TextSize = 14
     label.Font = Enum.Font.Jura
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = container
@@ -557,7 +556,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
     dropdown.BackgroundTransparency = 0.3
     dropdown.Text = options[1] or "Select"
     dropdown.TextColor3 = COLORS.text
-    dropdown.TextSize = 11
+    dropdown.TextSize = 13
     dropdown.Font = Enum.Font.Jura
     dropdown.Parent = container
     
@@ -576,7 +575,7 @@ function _G.Menu:AddDropdown(text, options, callback, category)
         end
         
         dropList = Instance.new("Frame")
-        dropList.Size = UDim2.new(0.6, 0, 0, #options * 25)
+        dropList.Size = UDim2.new(0.6, 0, 0, #options * 28)
         dropList.Position = UDim2.new(0.4, 0, 1, 2)
         dropList.BackgroundColor3 = COLORS.bgSecondary
         dropList.BackgroundTransparency = 0.1
@@ -589,12 +588,12 @@ function _G.Menu:AddDropdown(text, options, callback, category)
         
         for i, option in ipairs(options) do
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 25)
-            btn.Position = UDim2.new(0, 0, 0, (i-1) * 25)
+            btn.Size = UDim2.new(1, 0, 0, 28)
+            btn.Position = UDim2.new(0, 0, 0, (i-1) * 28)
             btn.BackgroundTransparency = 1
             btn.Text = option
             btn.TextColor3 = COLORS.text
-            btn.TextSize = 11
+            btn.TextSize = 13
             btn.Font = Enum.Font.Jura
             btn.Parent = dropList
             
@@ -636,7 +635,6 @@ local function UpdateStatus()
     StatusLabel.Text = "● ONLINE | Players: " .. count .. " | Ping: " .. math.floor(ping * 1000) .. "ms"
 end
 
--- Обновляем статус каждую секунду
 spawn(function()
     while wait(1) do
         if MainFrame.Visible then
@@ -665,10 +663,10 @@ _G.Menu:AddCategory("⚙️ Настройки")
 _G.Menu:AddCategory("📊 Инфо")
 _G.Menu:AddCategory("🔧 Дополнительно")
 
-_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
+_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 _G.Menu:AddLabel("OMEGA ULTIMATE v5.3", "📊 Инфо")
-_G.Menu:AddLabel("🎨 Стиль OVERDRIVE", "📊 Инфо")
-_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
+_G.Menu:AddLabel("📱 Широкое меню", "📊 Инфо")
+_G.Menu:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━", "📊 Инфо")
 
 -- ДЕМО-ФУНКЦИИ
 _G.Menu:AddToggle("Включить скрипт", function(state)
@@ -697,7 +695,7 @@ _G.Menu:AddButton("Тест", function()
 end, "🔧 Дополнительно")
 
 print("════════════════════════════════════════════════════════")
-print("⚡ OMEGA MENU v5.3 - СТИЛЬ OVERDRIVE")
-print("📱 Стилизовано под ваш скриншот")
-print("🎨 Сине-фиолетовая тема")
+print("⚡ OMEGA MENU v5.3 - ШИРОКОЕ МЕНЮ")
+print("📱 Размер: 85% ширины экрана")
+print("🎨 Стиль как на вашем скриншоте")
 print("════════════════════════════════════════════════════════")
